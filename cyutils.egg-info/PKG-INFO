@@ -1,0 +1,14 @@
+Metadata-Version: 1.0
+Name: cyutils
+Version: 0.0.0
+Summary: Cyclus analysis package
+Home-page: UNKNOWN
+Author: Tyler Kennelly
+Author-email: kennlly2@illinois.edu
+License: LICENSE.txt
+Description: cyutils: The Cyclus Ulitites package
+        =====================================
+        The Cyutils project intergrates and provides the user with a common and usable set of tools and functions that will make reading, writing, and analyzing cyclus files easier and user friendly.
+        
+        
+Platform: UNKNOWN
