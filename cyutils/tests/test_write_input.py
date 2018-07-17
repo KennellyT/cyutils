@@ -4,8 +4,8 @@ import os
 import sys
 path = os.path.realpath(__file__)
 sys.path.append(os.path.dirname(os.path.dirname(path)))
-import write_input as wi
 
+import cywrite.write_input as wi
 dir = os.path.dirname(__file__)
 test_database_path = os.path.join(dir, 'test_database.csv')
 

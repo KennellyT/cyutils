@@ -7,6 +7,7 @@ from itertools import cycle
 import matplotlib
 from matplotlib import cm
 from pyne import nucname
+import collections
 
 
 if len(sys.argv) < 2:
@@ -400,7 +401,7 @@ def facility_commodity_flux_isotopics(
     is_outflux: bool
         gets outflux if True, influx if False
     is_cum: bool
-        gets cumulative timeseris if True, monthly value if False
+        gets cumulative timeseries if True, monthly value if False
 
     Returns
     -------
@@ -1460,7 +1461,7 @@ def plot_power(cur):
     init_year, init_month, duration, timestep = simulation_timesteps(cur)
     power = power_capacity(cur)
     stacked_bar_chart(power, timestep,
-                      'Years', 'Net_Capacity [GWe]',
+                      'Years', 'Net Capacity [GWe]',
                       'Net Capacity vs Time',
                       'power_plot', init_year)
 
@@ -1702,3 +1703,624 @@ def source_throughput(cur, duration, frac_prod, frac_tail):
     print('Throughput should be at least: ' +
           str(feed_factor * avg_fuel_used) + ' [kg]')
     return feed_factor * avg_fuel_used
+
+
+def plot_in_flux_cumulative(
+        cur,
+        facility,
+        title):
+    """plots timeseries influx/ outflux from facility name in kg.
+
+    Inputs:
+    cur: sqlite cursor
+        sqlite cursor
+    facility: str
+        facility name
+    influx_bool: bool
+        if true, calculates influx,
+        if false, calculates outflux
+    title: str
+        title of the multi line plot
+    outputname: str
+        filename of the multi line plot file
+    is_cum: Boolean:
+        true: add isotope masses over time
+        false: do not add isotope masses at each timestep
+
+    Outputs:
+    none
+    """
+
+    masstime = cumulative_mass_timeseries(cur, facility, flux='in')[0]
+    times = cumulative_mass_timeseries(cur, facility, flux='in')[1]
+    mass_sort = sorted(masstime.items(), key=lambda e: e[
+                       1][-1], reverse=True)
+    nuclides = [item[0] for item in mass_sort]
+    masses = [item[1] for item in mass_sort]
+    plt.stackplot(times[0], masses, labels=nuclides)
+    plt.legend(loc='upper left')
+    plt.title(title)
+    plt.xlabel('time [months]')
+    plt.ylabel('mass [kg]')
+    plt.xlim(left=0.0)
+    plt.ylim(bottom=0.0)
+    plt.show()
+
+
+def plot_out_flux_cumulative(
+        cur,
+        facility,
+        title):
+    """plots timeseries influx/ outflux from facility name in kg.
+
+    Inputs:
+    cur: sqlite cursor
+        sqlite cursor
+    facility: str
+        facility name
+    influx_bool: bool
+        if true, calculates influx,
+        if false, calculates outflux
+    title: str
+        title of the multi line plot
+    outputname: str
+        filename of the multi line plot file
+    is_cum: Boolean:
+        true: add isotope masses over time
+        false: do not add isotope masses at each timestep
+
+    Outputs:
+    none
+    """
+
+    masses = cumulative_mass_timeseries(cur, facility, flux='out')
+    masstime = masses[0]
+    times = masses[1]
+
+    mass_sort = sorted(masstime.items(), key=lambda e: e[
+                       1][-1], reverse=True)
+    nuclides = [item[0] for item in mass_sort]
+    masses = [item[1] for item in mass_sort]
+    plt.stackplot(times[0], masses, labels=nuclides)
+    plt.legend(loc='upper left')
+    plt.title(title)
+    plt.xlabel('time [months]')
+    plt.ylabel('mass [kg]')
+    plt.xlim(left=0.0)
+    plt.ylim(bottom=0.0)
+    plt.show()
+
+
+def plot_in_flux_basic(
+        cur,
+        facility,
+        title):
+    """plots timeseries influx/ outflux from facility name in kg.
+
+    Inputs:
+    cur: sqlite cursor
+        sqlite cursor
+    facility: str
+        facility name
+    influx_bool: bool
+        if true, calculates influx,
+        if false, calculates outflux
+    title: str
+        title of the multi line plot
+    outputname: str
+        filename of the multi line plot file
+    is_cum: Boolean:
+        true: add isotope masses over time
+        false: do not add isotope masses at each timestep
+
+    Outputs:
+    none
+    """
+
+    masses = mass_timeseries(cur, facility, flux='in')
+    masstime = masses[0]
+    times = masses[1]  # mass_timeseries(cur,facility,flux='in')[1]
+    mass_sort = sorted(masstime.items(), key=lambda e: e[
+                       1][-1], reverse=True)
+    nuclides = [item[0] for item in mass_sort]
+    masses = [item[1] for item in mass_sort]
+    plt.stackplot(times[0], masses, labels=nuclides)
+    plt.legend(loc='upper left')
+    plt.title(title)
+    plt.xlabel('time [months]')
+    plt.ylabel('mass [kg]')
+    plt.xlim(left=0.0)
+    plt.ylim(bottom=0.0)
+    plt.show()
+
+
+def plot_out_flux_basic(
+        cur,
+        facility,
+        title):
+    """plots timeseries influx/ outflux from facility name in kg.
+
+    Inputs:
+    cur: sqlite cursor
+        sqlite cursor
+    facility: str
+        facility name
+    influx_bool: bool
+        if true, calculates influx,
+        if false, calculates outflux
+    title: str
+        title of the multi line plot
+    outputname: str
+        filename of the multi line plot file
+    is_cum: Boolean:
+        true: add isotope masses over time
+        false: do not add isotope masses at each timestep
+
+    Outputs:
+    none
+    """
+    masstime = mass_timeseries(cur, facility, flux='out')[0]
+    times = mass_timeseries(cur, facility, flux='out')[1]
+    mass_sort = sorted(masstime.items(), key=lambda e: e[
+                       1][-1], reverse=True)
+    nuclides = [item[0] for item in mass_sort]
+    masses = [item[1] for item in mass_sort]
+    plt.stackplot(times[0], masses, labels=nuclides)
+    plt.legend(loc='upper left')
+    plt.title(title)
+    plt.xlabel('time [months]')
+    plt.ylabel('mass [kg]')
+    plt.xlim(left=0.0)
+    plt.ylim(bottom=0.0)
+    plt.show()
+
+
+def plot_net_flux(
+        cur,
+        facility,
+        title):
+    """
+    Plots net flux of all isotopes over the duration of the simulation.
+    Parameters
+    ----------
+    cur : sqlite cursor
+        sqlite cursor
+    facility : str
+        name of facility
+    title : str
+        title of plot
+    Returns
+    -------
+    none
+    """
+    masstime_in = mass_timeseries(cur, facility, flux='in')[0]
+    times_in = mass_timeseries(cur, facility, flux='in')[1]
+    masstime_out = mass_timeseries(cur, facility, flux='out')[0]
+    times_out = mass_timeseries(cur, facility, flux='out')[1]
+    mass_sort_in = sorted(masstime_in.items(), key=lambda e: e[
+        1][-1], reverse=True)
+    mass_sort_out = sorted(masstime_out.items(), key=lambda e: e[
+        1][-1], reverse=True)
+    nuclides_in = [item[0] for item in mass_sort_in]
+    masses_in = [item[1] for item in mass_sort_in]
+    nuclides_out = [item[0] for item in mass_sort_out]
+    masses_out = np.negative([item[1] for item in mass_sort_out])
+    plt.stackplot(times_in[0], masses_in, labels=nuclides_in)
+    plt.stackplot(times_out[0], masses_out, labels=nuclides_out)
+    plt.legend(loc='upper left')
+    plt.title(title)
+    plt.xlabel('time [months]')
+    plt.ylabel('mass [kg]')
+    plt.xlim(left=0.0)
+    plt.show()
+
+
+def mass_timeseries(cur, facility, flux):
+    """
+    Returns dictionary of mass timeseries of each isotope at a facility.
+    Parameters
+    ----------
+    cur : sqlite cursor
+        sqlite cursor
+    facility : str
+        name of facility
+    flux : str
+        direction of flux
+    Returns
+    -------
+    masstime : dict
+        dictionary of isotopes and their mass series
+    times : list
+        list of times in the simulation 
+    """
+    agentids = prototype_id(cur, facility)
+
+    if flux == 'in':
+        resources = cur.execute(exec_string(agentids,
+                                            'transactions.receiverId',
+                                            'time, sum(quantity), '
+                                            'qualid') +
+                                ' GROUP BY time, qualid').fetchall()
+    else:
+        resources = cur.execute(exec_string(agentids,
+                                            'transactions.senderId',
+                                            'time, sum(quantity), '
+                                            'qualid') +
+                                ' GROUP BY time, qualid').fetchall()
+
+    compositions = cur.execute('SELECT qualid, nucid, massfrac '
+                               'FROM compositions').fetchall()
+
+    init_year, init_month, duration, timestep = simulation_timesteps(cur)
+
+    transactions = isotope_transactions(resources, compositions)
+
+    time_mass = []
+    time_waste = {}
+    for key in transactions.keys():
+
+        time_mass.append(transactions[key])
+        time_waste[key] = transactions[key]
+
+    waste_mass = waste_mass_series(transactions.keys(),
+                                   time_mass,
+                                   duration)
+    keys = []
+    for key in waste_mass.keys():
+        keys.append(key)
+
+    times = []
+    nuclides = []
+    masstime = {}
+    for element in range(len(keys)):
+        time_and_mass = np.array(time_waste[keys[element]])
+        time = [item[0] for item in time_and_mass]
+        mass = [item[1] for item in time_and_mass]
+        nuclide = nucname.name(keys[element])
+        mass = np.array(mass)
+        times.append(time)
+        nuclides.append(str(nuclide))
+        masstime[nucname.name(keys[element])] = mass
+    return masstime, times
+
+
+def cumulative_mass_timeseries(cur, facility, flux):
+
+    agentids = prototype_id(cur, facility)
+
+    if flux == 'in':
+        resources = cur.execute(exec_string(agentids,
+                                            'transactions.receiverId',
+                                            'time, sum(quantity), '
+                                            'qualid') +
+                                ' GROUP BY time, qualid').fetchall()
+    else:
+        resources = cur.execute(exec_string(agentids,
+                                            'transactions.senderId',
+                                            'time, sum(quantity), '
+                                            'qualid') +
+                                ' GROUP BY time, qualid').fetchall()
+
+    compositions = cur.execute('SELECT qualid, nucid, massfrac '
+                               'FROM compositions').fetchall()
+
+    init_year, init_month, duration, timestep = simulation_timesteps(cur)
+
+    transactions = isotope_transactions(resources, compositions)
+
+    time_mass = []
+    time_waste = {}
+    for key in transactions.keys():
+
+        time_mass.append(transactions[key])
+        time_waste[key] = transactions[key]
+
+    waste_mass = waste_mass_series(transactions.keys(),
+                                   time_mass,
+                                   duration)
+    keys = []
+    for key in waste_mass.keys():
+        keys.append(key)
+
+    times = []
+    nuclides = []
+    masstime = {}
+    for element in range(len(keys)):
+        time_and_mass = np.array(time_waste[keys[element]])
+        time = [item[0] for item in time_and_mass]
+        mass = [item[1] for item in time_and_mass]
+        nuclide = nucname.name(keys[element])
+        mass_cum = np.cumsum(mass)
+        times.append(time)
+        nuclides.append(str(nuclide))
+        masstime[nucname.name(keys[element])] = mass_cum
+    return masstime, times
+
+
+def plot_swu(cur, is_cum=True):
+    """returns dictionary of swu timeseries for each enrichment plant
+
+    Inputs:
+    cur: sqlite cursor
+        sqlite cursor
+    is_cum: bool
+        gets cumulative timeseris if True, monthly value if False
+
+    Outputs:
+    swu_dict: dictionary
+        dictionary with "key=Enrichment (facility number), and
+        value=swu timeseries list"
+    """
+
+    # first, an empty dictionary is created.  then, the IDs of each enrichment plant is pulled, and
+    # the simulation time data are retrieved using get_timesteps.
+    swu_dict = {}
+    agentid = agent_ids(cur, 'Enrichment')
+    init_year, init_month, duration, timestep = simulation_timesteps(cur)
+
+    # then, for each agent ID pulled from the CYCLUS data, the SWU data for that ID is fetched from the SQL
+    # database and assigned to swu_data.  Then, this data is put into timeseries form.  This final timeseries
+    # format of the data is what is actually assigned to the value in the
+    # swu_dict dictionary.
+    for num in agentid:
+        swu_data = cur.execute('SELECT time, value '
+                               'FROM timeseriesenrichmentswu '
+                               'WHERE agentid = ' + str(num)).fetchall()
+        if is_cum:
+            swu_timeseries = timeseries_cum(swu_data, duration, False)
+        else:
+            swu_timeseries = timeseries(swu_data, duration, False)
+
+        swu_dict['Enrichment_' + str(num)] = swu_timeseries
+
+    # below, the data from swu_dict is plotted.
+    keys = []
+    for key in swu_dict.keys():
+        keys.append(key)
+
+    if len(swu_dict) == 1:
+
+        if is_cum:
+
+            plt.plot(swu_dict[keys[0]], linestyle='-', linewidth=1)
+            plt.title('SWU: cumulative')
+            plt.xlabel('time [months]')
+            plt.ylabel('SWU')
+            plt.xlim(left=0.0)
+            plt.ylim(bottom=0.0)
+            plt.show()
+
+        else:
+
+            limit = 10**25
+            swu = np.array(swu_dict[keys[0]])
+            swu[swu > limit] = np.nan
+            swu[swu == 0] = np.nan
+            plt.plot(swu, linestyle=' ', marker='.', markersize=1)
+            plt.title('SWU: noncumulative')
+            plt.xlabel('time [months]')
+            plt.ylabel('SWU')
+            plt.xlim(left=0.0)
+            plt.ylim(bottom=0.0)
+            plt.show()
+
+    else:
+
+        if is_cum:
+            for element in range(len(keys)):
+                plt.plot(
+                    swu_dict[
+                        keys[element]],
+                    linestyle='-',
+                    linewidth=1,
+                    label=keys[element])
+            plt.legend(loc='upper left')
+            plt.title('SWU: cumulative')
+            plt.xlabel('time [months]')
+            plt.ylabel('SWU')
+            plt.xlim(left=0.0)
+            plt.ylim(bottom=0.0)
+            plt.show()
+
+        else:
+
+            limit = 10**25
+            for element in range(len(keys)):
+                swu = np.array(swu_dict[keys[element]])
+                swu[swu > limit] = np.nan
+                swu[swu == 0] = np.nan
+                plt.plot(
+                    swu,
+                    linestyle=' ',
+                    marker='.',
+                    markersize=1,
+                    label=keys[element])
+            plt.legend(loc='upper left')
+            plt.title('SWU: noncumulative')
+            plt.xlabel('time [months]')
+            plt.ylabel('SWU')
+            plt.xlim(left=0.0)
+            plt.ylim(bottom=0.0)
+            plt.show()
+
+
+def plot_cumulative_power(cur):
+    """
+    Plots cumulative power of reactor fleet over the simulation duration.
+
+    Parameters
+    ----------
+    cur :  mlite cursor
+        sqlite cursor
+    
+    Returns
+    -------
+    None
+    """
+    power_dict = {}
+    agentid = agent_ids(cur, 'Reactor')
+    init_year, init_month, duration, timestep = simulation_timesteps(cur)
+
+    for num in agentid:
+        power_data = cur.execute('SELECT time, value '
+                                 'FROM timeseriespower '
+                                 'WHERE agentid = ' + str(num)).fetchall()
+        power_timeseries = timeseries_cum(power_data, duration, False)
+        power_dict['Reactor_' + str(num)] = power_timeseries
+
+    keys = []
+    for key in power_dict.keys():
+        keys.append(key)
+    power = []
+    reactors = []
+    power_time = {}
+    for element in range(len(keys)):
+        power_cum = np.array(power_dict[keys[element]])
+        reactor = keys[element]
+        power.append(power_cum)
+        reactors.append(reactor)
+        power_time[keys[element]] = power_cum
+    power_sort = sorted(power_time.items(), key=lambda e: e[
+        1][-1], reverse=True)
+    reactors = [item[0] for item in power_sort]
+    powers = [item[1] for item in power_sort]
+    times = np.arange(0, duration, 1)
+    plt.stackplot(times, powers, labels=reactors)
+    plt.legend(loc='upper left')
+    plt.xlabel('Time [months]')
+    plt.ylabel('Power [MWe]')
+    plt.title('Power: cumulative')
+    plt.show()
+
+
+def plot_power_ot(cur, is_cum=True, is_tot=False):
+    """
+    Function creates a dictionary of power from each reactor over time, then plots it
+    according to the options set by the user when the function is called.
+
+    Inputs:
+    cur: sqlite cursor
+        sqlite cursor
+    is_cum: bool
+        gets cumulative timeseris if True, monthly value if False
+
+    Outputs:
+    none, but it shows the power plot.
+
+    """
+
+    # This function does exactly what plot swu does, but it uses the data
+    # pulled from timeseriespower instead.
+    power_dict = {}
+    agentid = agent_ids(cur, 'Reactor')
+    init_year, init_month, duration, timestep = simulation_timesteps(cur)
+
+    for num in agentid:
+        power_data = cur.execute('SELECT time, value '
+                                 'FROM timeseriespower '
+                                 'WHERE agentid = ' + str(num)).fetchall()
+        if is_cum:
+            power_timeseries = timeseries_cum(power_data, duration, False)
+        else:
+            power_timeseries = timeseries(power_data, duration, False)
+
+        power_dict['Reactor_' + str(num)] = power_timeseries
+
+    keys = []
+    for key in power_dict.keys():
+        keys.append(key)
+
+    if len(power_dict) == 1:
+
+        if is_cum:
+
+            plt.plot(power_dict[keys[0]], linestyle='-', linewidth=1)
+            plt.title('Power: cumulative')
+            plt.xlabel('time [months]')
+            plt.ylabel('power [MWe]')
+            plt.xlim(left=0.0)
+            plt.ylim(bottom=0.0)
+            plt.show()
+
+        else:
+
+            power = np.array(power_dict[keys[0]])
+
+            power[power == 0] = np.nan
+            plt.plot(power, linestyle=' ', marker='.', markersize=1)
+            plt.title('Power: noncumulative')
+            plt.xlabel('time [months]')
+            plt.ylabel('power [MWe]')
+            plt.xlim(left=0.0)
+            plt.ylim(bottom=0.0)
+            plt.show()
+
+    else:
+
+        if is_cum:
+            if not is_tot:
+
+                for element in range(len(keys)):
+                    plt.plot(
+                        power_dict[
+                            keys[element]],
+                        linestyle='-',
+                        linewidth=1,
+                        label=keys[element])
+                plt.legend(loc='upper left')
+                plt.title('Power: cumulative')
+                plt.xlabel('time [months]')
+                plt.ylabel('power [MWe]')
+                plt.xlim(left=0.0)
+                plt.ylim(bottom=0.0)
+                plt.show()
+
+            else:
+                total_power = np.zeros(len(power_dict[keys[0]]))
+                for element in range(len(keys)):
+                    for index in range(len(power_dict[keys[0]])):
+                        total_power[index] += power_dict[keys[element]][index]
+
+                plt.plot(total_power, linestyle='-', linewidth=1)
+                plt.title('Total Power: cumulative')
+                plt.xlabel('time [months]')
+                plt.ylabel('power [MWe]')
+                plt.xlim(left=0.0)
+                plt.ylim(bottom=0.0)
+                plt.show()
+
+        else:
+            if not is_tot:
+
+                for element in range(len(keys)):
+                    power = np.array(power_dict[keys[element]])
+                    power[power == 0] = np.nan
+                    plt.plot(
+                        power,
+                        linestyle=' ',
+                        marker='.',
+                        markersize=1,
+                        label=keys[element])
+                plt.legend(loc='lower left')
+                plt.title('Power: noncumulative')
+                plt.xlabel('time [months]')
+                plt.ylabel('power [MWe]')
+                plt.xlim(left=0.0)
+                plt.ylim(bottom=0.0)
+                plt.show()
+
+            else:
+
+                total_power = np.zeros(len(power_dict[keys[0]]))
+                for element in range(len(keys)):
+                    for index in range(len(power_dict[keys[0]])):
+                        total_power[index] += power_dict[keys[element]][index]
+
+                total_power[total_power == 0] = np.nan
+                plt.plot(total_power, linestyle=' ', marker='.', markersize=1)
+                plt.title('Total Power: noncumulative')
+                plt.xlabel('time [months]')
+                plt.ylabel('power [MWe]')
+                plt.xlim(left=0.0)
+                plt.ylim(bottom=0.0)
+                plt.show()
