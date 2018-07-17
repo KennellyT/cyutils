@@ -850,13 +850,10 @@ def u_util_calc(cur):
         Timeseries of Uranium utilization factor
     Prints simulation average Uranium Utilization
     """
-    # timeseries of natural uranium
     u_supply_timeseries = np.array(nat_u_timeseries(cur))
 
-    # timeseries of fuel into reactors
     fuel_usage = np.array(fuel_into_reactors(cur))
 
-    # timeseries of Uranium utilization
     u_util_timeseries = np.nan_to_num(fuel_usage / u_supply_timeseries)
     print('The Average Fuel Utilization Factor is: ')
     print(sum(u_util_timeseries) / len(u_util_timeseries))
@@ -1148,12 +1145,9 @@ def combined_line_plot(dictionary, timestep,
     Returns
     -------
     """
-    # set different colors for each bar
     color_index = 0
     plt.figure()
-    # for every country, create bar chart with different color
     for key in dictionary:
-        # label is the name of the nuclide (converted from ZZAAA0000 format)
         if isinstance(key, str) is True:
             label = key.replace('_government', '')
         else:
@@ -1209,14 +1203,10 @@ def double_axis_bar_line_plot(dictionary1, dictionary2, timestep,
     Returns
     -------
     """
-    # set different colors for each bar
-
     fig, ax1 = plt.subplots()
-    # for every country, create bar chart with different color
     color1 = 'r'
     color2 = 'b'
     for key in dictionary1:
-        # label is the name of the nuclide (converted from ZZAAA0000 format)
         if isinstance(key, str) is True:
             label = key.replace('_government', '')
         else:
@@ -1240,7 +1230,6 @@ def double_axis_bar_line_plot(dictionary1, dictionary2, timestep,
     lines = ['-', '--', '-.', ':']
     linecycler = cycle(lines)
     for key in dictionary2:
-        # label is the name of the nuclide (converted from ZZAAA0000 format)
         if isinstance(key, str) is True:
             label = key.replace('_government', '')
         else:
@@ -1297,16 +1286,13 @@ def double_axis_line_line_plot(dictionary1, dictionary2, timestep,
     Returns
     -------
     """
-    # set different colors for each bar
     lines = ['-', '--', '-.', ':']
     linecycler = cycle(lines)
     fig, ax1 = plt.subplots()
     top = True
     color1 = 'r'
     color2 = 'b'
-    # for every country, create bar chart with different color
     for key in dictionary1:
-        # label is the name of the nuclide (converted from ZZAAA0000 format)
         if isinstance(key, str) is True:
             label = key.replace('_government', '')
         else:
@@ -1336,7 +1322,6 @@ def double_axis_line_line_plot(dictionary1, dictionary2, timestep,
     linecycler = cycle(lines)
 
     for key in dictionary2:
-        # label is the name of the nuclide (converted from ZZAAA0000 format)
         if isinstance(key, str) is True:
             label = key.replace('_government', '')
         else:
@@ -1388,18 +1373,15 @@ def stacked_bar_chart(dictionary, timestep,
     Returns
     -------
     """
-    # set different colors for each bar
     color_index = 0
     top_index = True
     prev = np.zeros(1)
     plots = []
-    # for every country, create bar chart with different color
     for key in dictionary:
         if isinstance(key, str) is True:
             label = key.replace('_government', '')
         else:
             label = str(key)
-        # very first country does not have a 'bottom' argument
         if sum(dictionary[key]) == 0:
             print(label + ' has no values')
         elif top_index is True:
@@ -1414,8 +1396,6 @@ def stacked_bar_chart(dictionary, timestep,
             top_index = False
             plots.append(plot)
 
-        # All curves except the first have a 'bottom'
-        # defined by the previous curve
         else:
             plot = plt.bar(x=timestep_to_years(init_year, timestep),
                            height=dictionary[key],
@@ -1430,7 +1410,6 @@ def stacked_bar_chart(dictionary, timestep,
 
         color_index += 1
 
-    # plot
     if sum(sum(dictionary[k]) for k in dictionary) > 1000:
         ax = plt.gca()
         ax.get_yaxis().set_major_formatter(
@@ -1470,186 +1449,6 @@ def plot_power(cur):
                       'Years', 'Number of Reactors',
                       'Number of Reactors vs Time',
                       'num_plot', init_year)
-
-
-def plot_in_out_flux(
-        cur,
-        facility,
-        influx_bool,
-        title,
-        is_cum=False,
-        is_tot=False):
-    """plots timeseries influx/ outflux from facility name in kg.
-
-    Inputs:
-    cur: sqlite cursor
-        sqlite cursor
-    facility: str
-        facility name
-    influx_bool: bool
-        if true, calculates influx,
-        if false, calculates outflux
-    title: str
-        title of the multi line plot
-    outputname: str
-        filename of the multi line plot file
-    is_cum: Boolean:
-        true: add isotope masses over time
-        false: do not add isotope masses at each timestep
-
-    Outputs:
-    none
-    """
-
-    agentids = prototype_id(cur, facility)
-
-    if influx_bool is True:
-        resources = cur.execute(exec_string(agentids,
-                                            'transactions.receiverId',
-                                            'time, sum(quantity), '
-                                            'qualid') +
-                                ' GROUP BY time, qualid').fetchall()
-    else:
-        resources = cur.execute(exec_string(agentids,
-                                            'transactions.senderId',
-                                            'time, sum(quantity), '
-                                            'qualid') +
-                                ' GROUP BY time, qualid').fetchall()
-
-    compositions = cur.execute('SELECT qualid, nucid, massfrac '
-                               'FROM compositions').fetchall()
-
-    init_year, init_month, duration, timestep = simulation_timesteps(cur)
-
-    transactions = isotope_transactions(resources, compositions)
-
-    time_mass = []
-    time_waste = {}
-    for key in transactions.keys():
-
-        time_mass.append(transactions[key])
-        time_waste[key] = transactions[key]
-
-    waste_mass = waste_mass_series(transactions.keys(),
-                                   time_mass,
-                                   duration)
-
-    if is_cum == False and is_tot == False:
-        keys = []
-        for key in waste_mass.keys():
-            keys.append(key)
-
-        for element in range(len(keys)):
-            time_and_mass = np.array(time_waste[keys[element]])
-            time = [item[0] for item in time_and_mass]
-            mass = [item[1] for item in time_and_mass]
-            plt.plot(
-                time,
-                mass,
-                linestyle=' ',
-                marker='.',
-                markersize=1,
-                label=nucname.name(
-                    keys[0]))
-
-        plt.legend(loc='upper left')
-        plt.title(title)
-        plt.xlabel('time [months]')
-        plt.ylabel('mass [kg]')
-        plt.xlim(left=0.0)
-        plt.ylim(bottom=0.0)
-        plt.show()
-
-    elif is_cum and is_tot == False:
-        value = 0
-        keys = []
-        for key in waste_mass.keys():
-            keys.append(key)
-
-        for element in range(len(waste_mass.keys())):
-            placeholder = []
-            value = 0
-            key = keys[element]
-
-            for index in range(len(waste_mass[key])):
-                value += waste_mass[key][index]
-                placeholder.append(value)
-            waste_mass[key] = placeholder
-
-        times = []
-        nuclides = []
-        masstime = {}
-        for element in range(len(keys)):
-            time_and_mass = np.array(time_waste[keys[element]])
-            time = [item[0] for item in time_and_mass]
-            mass = [item[1] for item in time_and_mass]
-            nuclide = nucname.name(keys[element])
-            mass_cum = np.cumsum(mass)
-            times.append(time)
-            nuclides.append(str(nuclide))
-            masstime[nucname.name(keys[element])] = mass_cum
-        mass_sort = sorted(masstime.items(), key=lambda e: e[
-                           1][-1], reverse=True)
-        nuclides = [item[0] for item in mass_sort]
-        masses = [item[1] for item in mass_sort]
-        plt.stackplot(times[0], masses, labels=nuclides)
-        plt.legend(loc='upper left')
-        plt.title(title)
-        plt.xlabel('time [months]')
-        plt.ylabel('mass [kg]')
-        plt.xlim(left=0.0)
-        plt.ylim(bottom=0.0)
-        plt.show()
-
-    elif is_cum == False and is_tot == True:
-        keys = []
-        for key in waste_mass.keys():
-            keys.append(key)
-
-        total_mass = np.zeros(len(waste_mass[keys[0]]))
-        for element in range(len(keys)):
-            for index in range(len(waste_mass[keys[0]])):
-                total_mass[index] += waste_mass[keys[element]][index]
-
-        total_mass[total_mass == 0] = np.nan
-        plt.plot(total_mass, linestyle=' ', marker='.', markersize=1)
-        plt.title(title)
-        plt.xlabel('time [months]')
-        plt.ylabel('mass [kg]')
-        plt.xlim(left=0.0)
-        plt.ylim(bottom=0.0)
-        plt.show()
-
-    elif is_cum and is_tot:
-        value = 0
-        keys = []
-        for key in waste_mass.keys():
-            keys.append(key)
-
-        times = []
-        nuclides = []
-        masstime = {}
-        for element in range(len(keys)):
-            time_and_mass = np.array(time_waste[keys[element]])
-            time = [item[0] for item in time_and_mass]
-            mass = [item[1] for item in time_and_mass]
-            nuclide = nucname.name(keys[element])
-            mass_cum = np.cumsum(mass)
-            times.append(time)
-            nuclides.append(str(nuclide))
-            masstime[nucname.name(keys[element])] = mass_cum
-        mass_sort = sorted(masstime.items(), key=lambda e: e[
-                           1][-1], reverse=True)
-        nuclides = [item[0] for item in mass_sort]
-        masses = [item[1] for item in mass_sort]
-        plt.stackplot(times[0], masses, labels=nuclides)
-        plt.legend(loc='upper left')
-        plt.title(title)
-        plt.xlabel('time [months]')
-        plt.ylabel('mass [kg]')
-        plt.xlim(left=0.0)
-        plt.ylim(bottom=0.0)
-        plt.show()
 
 
 def entered_power(cur):
@@ -1931,7 +1730,7 @@ def mass_timeseries(cur, facility, flux):
     masstime : dict
         dictionary of isotopes and their mass series
     times : list
-        list of times in the simulation 
+        list of times in the simulation
     """
     agentids = prototype_id(cur, facility)
 
@@ -1985,7 +1784,23 @@ def mass_timeseries(cur, facility, flux):
 
 
 def cumulative_mass_timeseries(cur, facility, flux):
-
+    """
+    Returns dictionary of the cumulative mass timeseries of each isotope at a facility.
+    Parameters
+    ----------
+    cur : sqlite cursor
+        sqlite cursor
+    facility : str
+        name of facility
+    flux : str
+        direction of flux
+    Returns
+    -------
+    masstime : dict
+        dictionary of isotopes and their mass series
+    times : list
+        list of times in the simulation
+    """
     agentids = prototype_id(cur, facility)
 
     if flux == 'in':
@@ -2152,7 +1967,7 @@ def plot_cumulative_power(cur):
     ----------
     cur :  mlite cursor
         sqlite cursor
-    
+
     Returns
     -------
     None
@@ -2166,6 +1981,59 @@ def plot_cumulative_power(cur):
                                  'FROM timeseriespower '
                                  'WHERE agentid = ' + str(num)).fetchall()
         power_timeseries = timeseries_cum(power_data, duration, False)
+        power_dict['Reactor_' + str(num)] = power_timeseries
+
+    keys = []
+    for key in power_dict.keys():
+        keys.append(key)
+    power = []
+    reactors = []
+    power_time = {}
+    for element in range(len(keys)):
+        power_level = np.array(power_dict[keys[element]])
+        reactor = keys[element]
+        power.append(power_level)
+        reactors.append(reactor)
+        power_time[keys[element]] = power_level
+    power_sort = sorted(power_time.items(), key=lambda e: e[
+        1][-1], reverse=True)
+    reactors = [item[0] for item in power_sort]
+    powers = [item[1] for item in power_sort]
+    times = np.arange(0, duration, 1)
+    plt.stackplot(times, powers, labels=reactors)
+    plt.legend(loc='upper left')
+    plt.xlabel('Time [months]')
+    plt.ylabel('Power [MWe]')
+    plt.title('Power: cumulative')
+    plt.show()
+
+
+def plot_power_reactor(cur, reactors):
+    """
+    Plots power of reactor fleet over the simulation duration.
+
+    Parameters
+    ----------
+    cur :  mlite cursor
+        sqlite cursor
+    reactors : list
+        list of reactors to plot
+
+    Returns
+    -------
+    None
+    """
+    power_dict = {}
+    agentid = agent_ids(cur, 'Reactor')
+    if len(reactors) != 0:
+        agentid = reactors
+    init_year, init_month, duration, timestep = simulation_timesteps(cur)
+
+    for num in agentid:
+        power_data = cur.execute('SELECT time, value '
+                                 'FROM timeseriespower '
+                                 'WHERE agentid = ' + str(num)).fetchall()
+        power_timeseries = timeseries(power_data, duration, False)
         power_dict['Reactor_' + str(num)] = power_timeseries
 
     keys = []
@@ -2189,7 +2057,7 @@ def plot_cumulative_power(cur):
     plt.legend(loc='upper left')
     plt.xlabel('Time [months]')
     plt.ylabel('Power [MWe]')
-    plt.title('Power: cumulative')
+    plt.title('Reactor Power')
     plt.show()
 
 

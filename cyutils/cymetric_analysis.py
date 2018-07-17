@@ -188,7 +188,7 @@ def total_isotope_mined(evaler,isotopes=[],mines=[]):
     total_isotope_mass = np.cumsum(list(total_iso['Mass']))
     return total_isotope_mass[-1]
 
-def cy_facility_commodity_flux(evaler, agentids=[],
+def facility_commodity_flux(evaler, agentids=[],
                             facility_commodities=[]
                             ,receivers=[],senders=[]):
     """Returns timeseries isotoptics of commodity in/outflux
@@ -216,35 +216,4 @@ def cy_facility_commodity_flux(evaler, agentids=[],
     commodities = facility_commodities
     isotopes_transactions = filters.transactions_nuc(evaler,commodities,receivers,senders)
     return isotopes_transactions
-def plot_facility_outflux(evaler,senders=[],nucs=[]): 
-    # Does not work
-    outflux = filters.transactions_nuc(evaler,senders,nucs)
-    iso_mass = collections.defaultdict(list)
-    iso_time = collections.defaultdict(list)
-    for i in range(len(outflux['NucId'])):
-        isotope = outflux['NucId'][i]
-        iso_mass[isotope].append(outflux['Mass'][i])
-        iso_time[isotope].append(outflux['Time'][i])
-    keys = []
-    for key in iso_mass.keys():
-        keys.append(key)
-
-    times = []
-    nuclides = []
-    masstime = {}
-    for element in keys:
-        time = np.array(iso_time[element])
-        mass = np.array(iso_mass[element])
-        nuclide = nucname.name(int(element))
-        mass_cum = np.cumsum(np.asarray(mass,dtype=float))
-        
-        times.append(time)
-        nuclides.append(str(nuclide))
-        masstime[nucname.name(int(element))] = mass_cum
-    mass_sort = sorted(masstime.items(), key=lambda e: e[
-                       1][-1], reverse=True)
-    nuclides = [item[0] for item in masstime]
-    masses = [item[1] for item in masstime]
-            
-    return outflux,times
 
