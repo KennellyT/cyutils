@@ -24,49 +24,55 @@ def evaluator(file_name):
     evaluate = cym.Evaluator(outputfile)
     return evaluate
 
-def significant_quantity(evaler, resource=None):
-    """Creates a dataframe that lists the Significant Quantities of a resource f
-        found in a cyclus output file.
-
-    Parameters
-    ----------
-    evaler : str
-        Cyclus evaluator
-    resource : str
-        Resource to gather significant quantity data on
-    Returns
-    -------
-    wanted_iso_df: df
-        Data frame with significant quantity data
-
-    """
-    if resource == '922350000':
-        nuc = resource
-        x = 25.0
-        wanted_iso = filters.transactions_nuc(evaler, nucs=[nuc])
-        wanted_iso_df = wanted_iso.assign(SQ=wanted_iso['Mass'] / x)
-    if resource == '942390000':
-        nuc = resource
-        x = 8.0
-        wanted_iso = filters.transactions_nuc(evaler, nucs=[nuc])
-        wanted_iso_df = wanted_iso.assign(SQ=wanted_iso['Mass'] / x)
-    if resource == 'natural uranium':
-        nuc = 'u-ore'
-        x = 10000.0
-        wanted_iso = filters.transactions_nuc(evaler, commodities=[nuc])
-        wanted_iso_combine = wanted_iso.reset_index().groupby("ResourceId").sum()
-        wanted_iso_combine.loc[
-            wanted_iso_combine['NucId'] == 1844730000,
-            'NucId'] = 'natural uraninum'
-        wanted_iso_df = wanted_iso_combine.assign(
-            SQ=wanted_iso_combine['Mass'] / x)
-    if resource == '942390000':
-        nuc = resource
-        x = 8.0
-        wanted_iso = filters.transactions_nuc(evaler, nucs=[nuc])
-        wanted_iso_df = wanted_iso.assign(SQ=wanted_iso['Mass'] / x)
-    return wanted_iso_df
-
+# =============================================================================
+# def significant_quantity(evaler, resource=None):
+#     """Creates a dataframe that lists the Significant Quantities of a resource f
+#         found in a cyclus output file.
+# 
+#     Parameters
+#     ----------
+#     evaler : str
+#         Cyclus evaluator
+#     resource : str
+#         Resource to gather significant quantity data on
+#     Returns
+#     -------
+#     wanted_iso_df: df
+#         Data frame with significant quantity data
+# 
+#     """
+#     if resource == '922350000':
+#         global wanted_iso_df
+#         nuc = resource
+#         x = 25.0
+#         wanted_iso = filters.transactions_nuc(evaler, nucs=[nuc])
+#         wanted_iso_df = wanted_iso.assign(SQ=wanted_iso['Mass'] / x)
+#     if resource == '942390000':
+#         global wanted_iso_df
+#         nuc = resource
+#         x = 8.0
+#         wanted_iso = filters.transactions_nuc(evaler, nucs=[nuc])
+#         wanted_iso_df = wanted_iso.assign(SQ=wanted_iso['Mass'] / x)
+#     if resource == 'natural uranium':
+#         global wanted_iso_df        
+#         nuc = 'u-ore'
+#         x = 10000.0
+#         wanted_iso = filters.transactions_nuc(evaler, commodities=[nuc])
+#         wanted_iso_combine = wanted_iso.reset_index().groupby("ResourceId").sum()
+#         wanted_iso_combine.loc[
+#             wanted_iso_combine['NucId'] == 1844730000,
+#             'NucId'] = 'natural uraninum'
+#         wanted_iso_df = wanted_iso_combine.assign(
+#             SQ=wanted_iso_combine['Mass'] / x)
+#     if resource == '942390000':
+#         global wanted_iso_df 
+#         nuc = resource
+#         x = 8.0
+#         wanted_iso = filters.transactions_nuc(evaler, nucs=[nuc])
+#         wanted_iso_df = wanted_iso.assign(SQ=wanted_iso['Mass'] / x)
+#     return wanted_iso_df
+# 
+# =============================================================================
 
 def power_timeseries(evaler, agentids=[]):
     """Returns power by AgentId timeseries
@@ -183,9 +189,10 @@ def power_agent_id(sql_filename,agentids=[]):
     
     return agent_id_power
 
-def total_isotope_mined(evaler,isotopes=[],mines=[]):
-    total_iso = filters.transactions_nuc(evaler,nucs=isotopes,senders=mines)
+def total_isotope_mined(evaler,isotope=[],mines=[]):
+    total_iso = filters.transactions_nuc(evaler,nucs=isotope,senders=mines)
     total_isotope_mass = np.cumsum(list(total_iso['Mass']))
+    print('total_mass of isotope in kg:') 
     return total_isotope_mass[-1]
 
 def facility_commodity_flux(evaler, agentids=[],
