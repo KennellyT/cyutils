@@ -5,7 +5,7 @@ The script folder contains scripts that can be used to generate CYCLUS
 input files and analyze CYCLUS output files.
 
 
-### write_reactors.py
+### cywrite.py
 Python script for CYCLUS input file generation.
 
 The assumptions for the parameters are as follows:
