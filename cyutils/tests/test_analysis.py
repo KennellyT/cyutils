@@ -337,7 +337,7 @@ def test_sql_filename():
     ans_filename = str(test_sqlite_path)
     assert filename == ans_filename
     
-
+    
 def test_total_isotope_mined():
     cur = get_sqlite_cursor()
     mined = an.total_isotope_mined(cur,facility='mine')

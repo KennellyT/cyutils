@@ -546,6 +546,8 @@ def power_capacity_of_region(cur, region_name):
         "dictionary with key=government and
         value=timeseries list of installed capacity"
     """
+    init_year, init_month, duration, timestep = simulation_timesteps(cur)
+    insts = institutions(cur)
     parentid = cur.exectue('SELECT agentid FROM agententry WHERE '
                            'Prototype LIKE "%' + region_name + '%" '
                            'AND Kind = "Inst"').fetchone()
@@ -557,6 +559,8 @@ def power_capacity_of_region(cur, region_name):
                              'ON agententry.agentid = timeseriespower.agentid '
                              'GROUP BY timeseriespower.agentid '
                              'WHERE parentid = %i' % parentid[0]).fetchall()
+
+    return capacity_calc(insts, timestep, entry_exit)
 
 
 def deployments(cur):
@@ -871,8 +875,8 @@ def plot_uranium_utilization(cur):
     none
     """
 
-    u_util_timeseries =u_util_calc(cur) 
-    plt.plot(u_util_timeseries,label='Uranium utilization')
+    u_util_timeseries = u_util_calc(cur)
+    plt.plot(u_util_timeseries, label='Uranium utilization')
     plt.xlabel('time [months]')
     plt.ylabel('Uranium Utilization')
     plt.legend()
@@ -1439,7 +1443,6 @@ def stacked_bar_chart(dictionary, timestep,
     plt.savefig(outputname + '.png', format='png', bbox_inches='tight')
     plt.close()
 
-
 def plot_power(cur):
     """Gets capacity vs time for every country
         in stacked bar chart.
@@ -1567,7 +1570,8 @@ def plot_out_flux_cumulative(
         title):
     """plots timeseries influx/ outflux from facility name in kg.
 
-    Inputs:
+    Parameters:
+    ----------
     cur: sqlite cursor
         sqlite cursor
     facility: str
@@ -1583,7 +1587,8 @@ def plot_out_flux_cumulative(
         true: add isotope masses over time
         false: do not add isotope masses at each timestep
 
-    Outputs:
+    Returns:
+    --------
     none
     """
 
@@ -1865,9 +1870,49 @@ def cumulative_mass_timeseries(cur, facility, flux):
         nuclides.append(str(nuclide))
         masstime[nucname.name(keys[element])] = mass_cum
     return masstime, times
+ 
+def plot_in_basic(
+        cur,
+        facility,
+        title):
+    """plots timeseries influx/ outflux from facility name in kg.
+
+    Inputs:
+    cur: sqlite cursor
+        sqlite cursor
+    facility: str
+        facility name
+    influx_bool: bool
+        if true, calculates influx,
+        if false, calculates outflux
+    title: str
+        title of the multi line plot
+    outputname: str
+        filename of the multi line plot file
+    is_cum: Boolean:
+        true: add isotope masses over time
+        false: do not add isotope masses at each timestep
+
+    Outputs:
+    none
+    """
+    masstime = cumulative_mass_timeseries(cur, facility, flux='in')[0]
+    times = cumulative_mass_timeseries(cur, facility, flux='in')[1]
+    mass_sort = sorted(masstime.items(), key=lambda e: e[
+                       1][-1], reverse=True)
+    nuclides = [item[0] for item in mass_sort]
+    masses = [item[1] for item in mass_sort]
+    plt.stackplot(times[0], masses, labels=nuclides)
+    plt.legend(loc='upper left')
+    plt.title(title)
+    plt.xlabel('time [months]')
+    plt.ylabel('mass [kg]')
+    plt.xlim(left=0.0)
+    plt.ylim(bottom=0.0)
+    plt.show()    
 
 
-def plot_cumulative_swu(cur, facilities = []):
+def plot_cumulative_swu(cur, facilities=[]):
     """returns dictionary of swu timeseries for each enrichment plant
 
     Inputs:
@@ -1918,7 +1963,8 @@ def plot_cumulative_swu(cur, facilities = []):
     plt.title('Cumulative SWU by Facility')
     plt.show()
 
-def plot_swu(cur, facilities = []):
+
+def plot_swu(cur, facilities=[]):
     """returns dictionary of swu timeseries for each enrichment plant
 
     Inputs:
@@ -1968,9 +2014,9 @@ def plot_swu(cur, facilities = []):
     plt.ylabel('SWU')
     plt.title('SWU by Facility')
     plt.show()
-    
-    
-def plot_cumulative_power(cur,reactors):
+
+
+def plot_cumulative_power(cur, reactors):
     """
     Plots cumulative power of reactor fleet over the simulation duration.
 
@@ -2074,6 +2120,7 @@ def plot_power_reactor(cur, reactors):
     plt.title('Reactor Power')
     plt.show()
 
+
 def powerseries_reactor(cur, reactors):
     """
     Plots power of reactor fleet over the simulation duration.
@@ -2120,6 +2167,7 @@ def evaluator(file_name):
     evaluate = cym.Evaluator(outputfile)
     return evaluate
 
+
 def inventory_audit(evaler, agentids=[]):
     """Returns timeseries of AgentStateInventories
 
@@ -2154,11 +2202,15 @@ def compositions(evaler):
         Data frame of QualId mass fraction data
     """
     mass_frac = evaler.eval('Compositions')
-    comps = [['QualId','NucId','MassFrac']]
+    comps = [['QualId', 'NucId', 'MassFrac']]
     for i in range(len(mass_frac['QualId'])):
-        compsitions = [mass_frac['QualId'][i],mass_frac['NucId'][i],mass_frac['MassFrac'][i]]
+        compsitions = [
+            mass_frac['QualId'][i],
+            mass_frac['NucId'][i],
+            mass_frac['MassFrac'][i]]
         comps.append(compsitions)
     return comps
+
 
 def sql_filename(evaler):
     """Returns cyclus sql filename
@@ -2176,21 +2228,22 @@ def sql_filename(evaler):
     filename = evaler.db.name
     return filename
 
-def total_isotope_mined(cur,facility):
-    """Returns dictionary of total masses of isotopes mined 
-    
+
+def total_isotope_mined(cur, facility):
+    """Returns dictionary of total masses of isotopes mined
+
     Parameters
     ----------
      cur :  mlite cursor
         sqlite cursor
     facility : str
-        str of mine facility 
+        str of mine facility
 
     Returns
     -------
     total_isotopes_mined : dict
-        dictionary of isotopes mined and the total mass mined 
+        dictionary of isotopes mined and the total mass mined
     """
-    flux='out'
+    flux = 'out'
     total_isotopes_mined = cumulative_mass_timeseries(cur, facility, flux)[0]
     return total_isotopes_mined
