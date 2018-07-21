@@ -1,8 +1,7 @@
-# transition-scenarios
+# Cyutils
 
-## Script Folder
-The script folder contains scripts that can be used to generate CYCLUS
-input files and analyze CYCLUS output files.
+## Cyutils Folder
+The cyutils folder contains scripts that are the essentials of cyutils. 
 
 
 ### cywrite.py
@@ -57,8 +56,8 @@ To run:
 python test_analysis.py
 ```
 
-## Templates Folder
-This folder contains templates that are used in the write_reactors.py script.
+## templates Folder
+This folder contains templates that are used in the cywrite.py script.
 
 ### input_template.xml.in
 Jinja Template for the entire Cyclus input file.
@@ -83,6 +82,8 @@ Grouped region prototypes will be rendered into this file.
 
 
 ## Database Folder
+### fuel_recipes folder 
+Holds common fuel recipes that can be used in a simulation.
 
 ### eu_reactors_pris.csv
 The eu_reactors_pris.csv file lists all the nulear reactors in europe,
@@ -120,20 +121,33 @@ CYCLUS regarding transition scenarios.
 =======
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
+## examples 
+Is a tutorial on the usage of cycutils.
 
-# Predicting the Past Cyclus and Cycamore Benchmarking Project
-This is a public repository for the shared development of benchmarking
-simulation input data representing the past nuclear fuel cycle in the United 
-States and Europe. It is being conducted by undergraduate researchers at the 
-University of Illinois at Urbana-Champaign in the Advanced Reactors and Fuel
-Cycles group.
+## sql_files
+### singlereactor.sqlite
+Cyclus output file that models a fuel cycle made of 1 reactor.
 
-To view the work or run a simulation for a particular region, open [region_name].ipynb
-under input/ folder
+### singlereactortutorial.sqlite
+Cyclus output file that models a fuel cycle made of 1 reactor and is used in the tutorial.
 
-## REPORT
-To view the the report which includes the procedure, results and their
-explanations, please view `united_states.ipynb` or `europe.ipynb`.
+## tests
+Folder that contains tests that tests the functionality of cyutils
+
+### test_analysis.py
+Script that tests analysis.py
+
+### test_write_input.py
+Script that tests cywrite.py
+
+### test_cyanalysis.py
+Script that tests analysis.py
+
+### test_database.csv
+CSV file used in test_write _input.py
+
+### test.sqlite
+sqlite file that is used in test_analysis.py 
 
 ## Not Ready For Reuse
 During development, this work is under sole development by the authors in

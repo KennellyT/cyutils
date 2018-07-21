@@ -9,7 +9,7 @@ from pyne import nucname
 import cymetric as cym
 from cymetric import filters
 import pandas as pd
-
+from collections import Counter
 
 if len(sys.argv) < 2:
     print('Usage: python analysis.py [cylus_output_file]')
@@ -974,7 +974,8 @@ def waste_mass_series(isotopes, mass_timeseries, duration):
     -------
     waste_mass: dictionary
         dictionary with "key=isotope, and
-        value=mass timeseries of each unique isotope"   """
+        value=mass timeseries of each unique isotope"   
+    """
     waste_mass = {}
     for isotope in isotopes:
         postion = [i for i, x in enumerate(isotopes) if x == isotope][0]
@@ -1001,7 +1002,8 @@ def waste_timeseries(isotopes, mass_timeseries, duration):
     -------
     waste_time: dictionary
         dictionary with "key=isotope, and
-        value=mass timeseries of each unique isotope"   """
+        value=mass timeseries of each unique isotope"   
+    """
     waste_time = {}
     for isotope in isotopes:
         postion = [i for i, x in enumerate(isotopes) if x == isotope][0]
@@ -1443,6 +1445,7 @@ def stacked_bar_chart(dictionary, timestep,
     plt.savefig(outputname + '.png', format='png', bbox_inches='tight')
     plt.close()
 
+
 def plot_power(cur):
     """Gets capacity vs time for every country
         in stacked bar chart.
@@ -1635,15 +1638,16 @@ def plot_in_flux_basic(
     Outputs:
     none
     """
-
-    masses = mass_timeseries(cur, facility, flux='in')
-    masstime = masses[0]
-    times = masses[1]  # mass_timeseries(cur,facility,flux='in')[1]
+    masstime = mass_timeseries(cur, facility, flux='in')[0]
+    times = mass_timeseries(cur, facility, flux='in')[1]
+    nuclides = [item[0] for item in masstime]
+    masses = [item[1] for item in masstime]
     mass_sort = sorted(masstime.items(), key=lambda e: e[
-                       1][-1], reverse=True)
+         1][-1], reverse=True)
     nuclides = [item[0] for item in mass_sort]
     masses = [item[1] for item in mass_sort]
-    plt.stackplot(times[0], masses, labels=nuclides)
+    for i in range(len(times)):  
+        plt.plot(times[i],masses[i],label=nuclides[i])
     plt.legend(loc='upper left')
     plt.title(title)
     plt.xlabel('time [months]')
@@ -1680,11 +1684,14 @@ def plot_out_flux_basic(
     """
     masstime = mass_timeseries(cur, facility, flux='out')[0]
     times = mass_timeseries(cur, facility, flux='out')[1]
+    nuclides = [item[0] for item in masstime]
+    masses = [item[1] for item in masstime]
     mass_sort = sorted(masstime.items(), key=lambda e: e[
-                       1][-1], reverse=True)
+         1][-1], reverse=True)
     nuclides = [item[0] for item in mass_sort]
     masses = [item[1] for item in mass_sort]
-    plt.stackplot(times[0], masses, labels=nuclides)
+    for i in range(len(times)):  
+        plt.plot(times[i],masses[i],label=nuclides[i])
     plt.legend(loc='upper left')
     plt.title(title)
     plt.xlabel('time [months]')
@@ -1795,12 +1802,20 @@ def mass_timeseries(cur, facility, flux):
         time_and_mass = np.array(time_waste[keys[element]])
         time = [item[0] for item in time_and_mass]
         mass = [item[1] for item in time_and_mass]
+        mass_per_time = Counter()
+        for time,mass in time_and_mass:
+            mass_per_time.update({time:mass})    
+        time = list(mass_per_time.keys())
+        mass_val = list(mass_per_time.values())
         nuclide = nucname.name(keys[element])
-        mass = np.array(mass)
+        for j in np.arange(0,int(time[-1]+1)):
+            if j not in time:
+                time.insert(j, j) 
+                mass_val.insert(j,0)
         times.append(time)
         nuclides.append(str(nuclide))
-        masstime[nucname.name(keys[element])] = mass
-    return masstime, times
+        masstime[nucname.name(keys[element])] = mass_val
+    return masstime,times
 
 
 def cumulative_mass_timeseries(cur, facility, flux):
@@ -1846,7 +1861,7 @@ def cumulative_mass_timeseries(cur, facility, flux):
     time_mass = []
     time_waste = {}
     for key in transactions.keys():
-
+        
         time_mass.append(transactions[key])
         time_waste[key] = transactions[key]
 
@@ -1864,52 +1879,21 @@ def cumulative_mass_timeseries(cur, facility, flux):
         time_and_mass = np.array(time_waste[keys[element]])
         time = [item[0] for item in time_and_mass]
         mass = [item[1] for item in time_and_mass]
+        mass_per_time = Counter()
+        for time,mass in time_and_mass:
+            mass_per_time.update({time:mass})    
+        time = list(mass_per_time.keys())
+        mass_val = list(mass_per_time.values())
         nuclide = nucname.name(keys[element])
-        mass_cum = np.cumsum(mass)
+        for j in np.arange(0,int(time[-1]+1)):
+            if j not in time:
+                time.insert(j, j) 
+                mass_val.insert(j,0)
+        mass_cum = list(np.cumsum(mass_val))
         times.append(time)
         nuclides.append(str(nuclide))
         masstime[nucname.name(keys[element])] = mass_cum
-    return masstime, times
- 
-def plot_in_basic(
-        cur,
-        facility,
-        title):
-    """plots timeseries influx/ outflux from facility name in kg.
-
-    Inputs:
-    cur: sqlite cursor
-        sqlite cursor
-    facility: str
-        facility name
-    influx_bool: bool
-        if true, calculates influx,
-        if false, calculates outflux
-    title: str
-        title of the multi line plot
-    outputname: str
-        filename of the multi line plot file
-    is_cum: Boolean:
-        true: add isotope masses over time
-        false: do not add isotope masses at each timestep
-
-    Outputs:
-    none
-    """
-    masstime = cumulative_mass_timeseries(cur, facility, flux='in')[0]
-    times = cumulative_mass_timeseries(cur, facility, flux='in')[1]
-    mass_sort = sorted(masstime.items(), key=lambda e: e[
-                       1][-1], reverse=True)
-    nuclides = [item[0] for item in mass_sort]
-    masses = [item[1] for item in mass_sort]
-    plt.stackplot(times[0], masses, labels=nuclides)
-    plt.legend(loc='upper left')
-    plt.title(title)
-    plt.xlabel('time [months]')
-    plt.ylabel('mass [kg]')
-    plt.xlim(left=0.0)
-    plt.ylim(bottom=0.0)
-    plt.show()    
+    return masstime,times
 
 
 def plot_cumulative_swu(cur, facilities=[]):
@@ -2123,7 +2107,7 @@ def plot_power_reactor(cur, reactors):
 
 def powerseries_reactor(cur, reactors):
     """
-    Plots power of reactor fleet over the simulation duration.
+    Returns power of reactor fleet over the simulation duration.
 
     Parameters
     ----------
@@ -2229,7 +2213,7 @@ def sql_filename(evaler):
     return filename
 
 
-def total_isotope_mined(cur, facility):
+def total_isotope_used(cur, facility):
     """Returns dictionary of total masses of isotopes mined
 
     Parameters
@@ -2245,5 +2229,12 @@ def total_isotope_mined(cur, facility):
         dictionary of isotopes mined and the total mass mined
     """
     flux = 'out'
-    total_isotopes_mined = cumulative_mass_timeseries(cur, facility, flux)[0]
-    return total_isotopes_mined
+    isotope_masses_used = cumulative_mass_timeseries(cur, facility, flux)[0]
+    total_isotope = [item[1][-1] for item in isotope_masses_used.items()]
+    nuclides = [item[0] for item in isotope_masses_used.items()]
+    total_mass_used  = {}
+    for i in range(len(total_isotope)):
+        nuclide = nuclides[i]
+        mass = total_isotope[i]
+        total_mass_used[nuclide] = mass
+    return total_mass_used
