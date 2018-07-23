@@ -1531,7 +1531,8 @@ def plot_in_flux_cumulative(
         title):
     """plots timeseries influx/ outflux from facility name in kg.
 
-    Inputs:
+    Parameters:
+    ----------
     cur: sqlite cursor
         sqlite cursor
     facility: str
@@ -1547,8 +1548,8 @@ def plot_in_flux_cumulative(
         true: add isotope masses over time
         false: do not add isotope masses at each timestep
 
-    Outputs:
-    none
+    Returns:
+    --------
     """
 
     masstime = cumulative_mass_timeseries(cur, facility, flux='in')[0]
@@ -1592,7 +1593,6 @@ def plot_out_flux_cumulative(
 
     Returns:
     --------
-    none
     """
 
     masses = cumulative_mass_timeseries(cur, facility, flux='out')
@@ -1618,8 +1618,9 @@ def plot_in_flux_basic(
         facility,
         title):
     """plots timeseries influx/ outflux from facility name in kg.
-
-    Inputs:
+    
+    Parameters:
+    ----------
     cur: sqlite cursor
         sqlite cursor
     facility: str
@@ -1635,8 +1636,8 @@ def plot_in_flux_basic(
         true: add isotope masses over time
         false: do not add isotope masses at each timestep
 
-    Outputs:
-    none
+    Returns:
+    --------
     """
     masstime = mass_timeseries(cur, facility, flux='in')[0]
     times = mass_timeseries(cur, facility, flux='in')[1]
@@ -1663,7 +1664,8 @@ def plot_out_flux_basic(
         title):
     """plots timeseries influx/ outflux from facility name in kg.
 
-    Inputs:
+    Parameters:
+    ----------
     cur: sqlite cursor
         sqlite cursor
     facility: str
@@ -1679,8 +1681,8 @@ def plot_out_flux_basic(
         true: add isotope masses over time
         false: do not add isotope masses at each timestep
 
-    Outputs:
-    none
+    Returns:
+    --------
     """
     masstime = mass_timeseries(cur, facility, flux='out')[0]
     times = mass_timeseries(cur, facility, flux='out')[1]
@@ -1707,6 +1709,7 @@ def plot_net_flux(
         title):
     """
     Plots net flux of all isotopes over the duration of the simulation.
+    
     Parameters
     ----------
     cur : sqlite cursor
@@ -1717,7 +1720,6 @@ def plot_net_flux(
         title of plot
     Returns
     -------
-    none
     """
     masstime_in = mass_timeseries(cur, facility, flux='in')[0]
     times_in = mass_timeseries(cur, facility, flux='in')[1]
@@ -1899,13 +1901,15 @@ def cumulative_mass_timeseries(cur, facility, flux):
 def plot_cumulative_swu(cur, facilities=[]):
     """returns dictionary of swu timeseries for each enrichment plant
 
-    Inputs:
+    Parameters
+    ----------
     cur: sqlite cursor
         sqlite cursor
     facilities : list
         list of facilities to plot
 
-    Outputs:
+    Returns
+    -------
     swu_dict: dictionary
         dictionary with "key=Enrichment (facility number), and
         value=swu timeseries list"
@@ -1949,15 +1953,17 @@ def plot_cumulative_swu(cur, facilities=[]):
 
 
 def plot_swu(cur, facilities=[]):
-    """returns dictionary of swu timeseries for each enrichment plant
+    """Returns dictionary of swu timeseries for each enrichment plant
 
-    Inputs:
+    Parameters
+    ----------
     cur: sqlite cursor
         sqlite cursor
     facilities : list
         list of facilities to plot
 
-    Outputs:
+    Returns
+    -------
     swu_dict: dictionary
         dictionary with "key=Enrichment (facility number), and
         value=swu timeseries list"
@@ -2012,7 +2018,6 @@ def plot_cumulative_power(cur, reactors):
         list of reactors to plot
     Returns
     -------
-    None
     """
     power_dict = {}
     agentid = agent_ids(cur, 'Reactor')
@@ -2065,7 +2070,6 @@ def plot_power_reactor(cur, reactors):
 
     Returns
     -------
-    None
     """
     power_dict = {}
     agentid = agent_ids(cur, 'Reactor')
@@ -2118,7 +2122,6 @@ def powerseries_reactor(cur, reactors):
 
     Returns
     -------
-    None
     """
     power_dict = {}
     agentid = agent_ids(cur, 'Reactor')
@@ -2145,7 +2148,8 @@ def evaluator(file_name):
 
     Returns
     -------
-    sqlite cursor3
+    evaluate : Evaluator
+        cymetric evalutator         
     """
     outputfile = cym.dbopen(file_name)
     evaluate = cym.Evaluator(outputfile)
