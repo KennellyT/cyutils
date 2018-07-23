@@ -10,6 +10,10 @@ import cymetric as cym
 from cymetric import filters
 import pandas as pd
 from collections import Counter
+from mpl_toolkits.basemap import Basemap
+import matplotlib.pyplot as plt
+from mpl_toolkits.basemap import Basemap
+import matplotlib.pyplot as plt
 
 if len(sys.argv) < 2:
     print('Usage: python analysis.py [cylus_output_file]')
@@ -2242,3 +2246,26 @@ def total_isotope_used(cur, facility):
         mass = total_isotope[i]
         total_mass_used[nuclide] = mass
     return total_mass_used
+
+
+def waste_map(reactor_location):
+
+    m = Basemap(projection='mill',llcrnrlat=20,urcrnrlat=50,\
+                llcrnrlon=-130,urcrnrlon=-60,resolution='l')
+    m.drawcoastlines()
+    m.drawcountries()
+    m.drawstates()
+    m.fillcontinents(color='#04BAE3',lake_color='#FFFFFF')
+    m.drawmapboundary(fill_color='#FFFFFF')
+    color_wheel = ['ro','bo','go','yo','mo']
+    reactor_names = list(reactor_location.keys())
+    for i in range(len(reactor_names)):
+        lat = float(reactor_location[reactor_names[i]][0])
+        lon = float(reactor_location[reactor_names[i]][1])
+        x,y = m(lon,lat)
+        m.plot(x,y, color_wheel[i],label = str(reactor_names[i]))
+        
+        plt.legend()
+    plt.title('waste mass map')
+    plt.show()
+
