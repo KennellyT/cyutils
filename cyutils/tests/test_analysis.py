@@ -323,7 +323,7 @@ def test_inventory_audit():
     ev  = get_sqlite_evaluator()
     audit_resources = an.inventory_audit(ev,agentids=[30])['ResourceId'].tolist()
     ans_audit_resources = ev.eval('AgentStateInventories')['ResourceId']
-    return audit_resources
+    assert_almost_equal(audit_resources,ans_audit_resources)
 
 def test_compositions():
     ev  = get_sqlite_evaluator()
