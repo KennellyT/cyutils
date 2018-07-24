@@ -14,7 +14,7 @@ from mpl_toolkits.basemap import Basemap
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 import matplotlib.pyplot as plt
-
+from cymetric import graphs
 if len(sys.argv) < 2:
     print('Usage: python analysis.py [cylus_output_file]')
 
@@ -1902,6 +1902,98 @@ def cumulative_mass_timeseries(cur, facility, flux):
     return masstime,times
 
 
+def swu_series(cur,facilities=[]):  
+    """Returns dictionary of swu timeseries for each enrichment plant
+
+    Parameters
+    ----------
+    cur: sqlite cursor
+        sqlite cursor
+    facilities : list
+        list of facilities to plot
+
+    Returns
+    -------
+    swu_order: dictionary
+        dictionary with "key=Enrichment (facility number), and
+        value=swu timeseries dict"
+    """
+    swu_order = {}
+    swu_timeseries = {}
+    s = []
+    agentid = agent_ids(cur, 'Enrichment')
+    if len(facilities) != 0:
+        agentid = facilities
+    init_year, init_month, duration, timestep = simulation_timesteps(cur)
+    for num in agentid:
+        swu_data = cur.execute('SELECT time, SWU '
+                               'FROM enrichments '
+                               'WHERE id = ' + str(num)).fetchall()
+        
+        swu_dataseries = np.array(swu_data)
+        swu_times = [item[0] for item in swu_dataseries]
+        swu_values = [item[1] for item in swu_dataseries]
+
+        swu_per_time = Counter()
+        for swu_times,swu_values in swu_dataseries:
+            swu_per_time.update({swu_times:swu_values})    
+        time = list(swu_per_time.keys())
+        swu = list(swu_per_time.values())
+        for j in np.arange(0,int(duration)):
+            if j not in time:
+                time.insert(j, j) 
+                swu.insert(j,0)
+        swu_order['Enrichment_' + str(num)] = swu
+        swu_timeseries['Enrichment_' + str(num)] = time
+    return swu_order,swu_timeseries
+
+def cumulative_swu_series(cur,facilities=[]):  
+    """Returns dictionary of swu timeseries for each enrichment plant
+
+    Parameters
+    ----------
+    cur: sqlite cursor
+        sqlite cursor
+    facilities : list
+        list of facilities to plot
+
+    Returns
+    -------
+    swu_order: dictionary
+        dictionary with "key=Enrichment (facility number), and
+        value=swu timeseries dict"
+    """
+    swu_order = {}
+    swu_timeseries = {}
+    s = []
+    agentid = agent_ids(cur, 'Enrichment')
+    if len(facilities) != 0:
+        agentid = facilities
+    init_year, init_month, duration, timestep = simulation_timesteps(cur)
+    for num in agentid:
+        swu_data = cur.execute('SELECT time, SWU '
+                               'FROM enrichments '
+                               'WHERE id = ' + str(num)).fetchall()
+        
+        swu_dataseries = np.array(swu_data)
+        swu_times = [item[0] for item in swu_dataseries]
+        swu_values = [item[1] for item in swu_dataseries]
+
+        swu_per_time = Counter()
+        for swu_times,swu_values in swu_dataseries:
+            swu_per_time.update({swu_times:swu_values})    
+        time = list(swu_per_time.keys())
+        swu = list(swu_per_time.values())
+        for j in np.arange(0,int(duration)):
+            if j not in time:
+                time.insert(j, j) 
+                swu.insert(j,0)
+        swu_cum = np.cumsum(swu)
+        swu_order['Enrichment_' + str(num)] = swu_cum
+        swu_timeseries['Enrichment_' + str(num)] = time
+    return swu_order,swu_timeseries
+
+
 def plot_cumulative_swu(cur, facilities=[]):
     """returns dictionary of swu timeseries for each enrichment plant
 
@@ -1918,36 +2010,12 @@ def plot_cumulative_swu(cur, facilities=[]):
         dictionary with "key=Enrichment (facility number), and
         value=swu timeseries list"
     """
-    swu_dict = {}
-    agentid = agent_ids(cur, 'Enrichment')
-    if len(facilities) != 0:
-        agentid = facilities
-    init_year, init_month, duration, timestep = simulation_timesteps(cur)
-
-    for num in agentid:
-        swu_data = cur.execute('SELECT time, value '
-                               'FROM timeseriesenrichmentswu '
-                               'WHERE agentid = ' + str(num)).fetchall()
-        swu_timeseries = timeseries_cum(swu_data, duration, False)
-        swu_dict['Enrichment_' + str(num)] = swu_timeseries
-
-    keys = []
-    for key in swu_dict.keys():
-        keys.append(key)
-    swu = []
-    facilities = []
-    swu_time = {}
-    for element in range(len(keys)):
-        swu_cum = np.array(swu_dict[keys[element]])
-        facility = keys[element]
-        swu.append(swu_cum)
-        facilities.append(facility)
-        swu_time[keys[element]] = swu_cum
-    swu_sort = sorted(swu_time.items(), key=lambda e: e[
-        1][-1], reverse=True)
-    facilities = [item[0] for item in swu_sort]
-    swus = [item[1] for item in swu_sort]
-    times = np.arange(0, duration, 1)
+    swu_values = swu_series(cur,facilities)[0]
+    swu_times = swu_series(cur,facilities)[1]
+    
+    facilities = [item[0] for item in swu_values.items()]
+    swus = [np.cumsum(item[1]) for item in swu_values.items()]
+    times = [item[1] for item in swu_times.items()][0]
     plt.stackplot(times, swus, labels=facilities)
     plt.legend(loc='upper left')
     plt.xlabel('Time [months]')
@@ -1968,47 +2036,20 @@ def plot_swu(cur, facilities=[]):
 
     Returns
     -------
-    swu_dict: dictionary
-        dictionary with "key=Enrichment (facility number), and
-        value=swu timeseries list"
+
     """
-    swu_dict = {}
-    if len(facilities) != 0:
-        agentid = facilities
-    agentid = agent_ids(cur, 'Enrichment')
-    init_year, init_month, duration, timestep = simulation_timesteps(cur)
-
-    for num in agentid:
-        swu_data = cur.execute('SELECT time, value '
-                               'FROM timeseriesenrichmentswu '
-                               'WHERE agentid = ' + str(num)).fetchall()
-        swu_timeseries = timeseries(swu_data, duration, False)
-        swu_dict['Enrichment_' + str(num)] = swu_timeseries
-
-    keys = []
-    for key in swu_dict.keys():
-        keys.append(key)
-    swu = []
-    facilities = []
-    swu_time = {}
-    for element in range(len(keys)):
-        swu_list = np.array(swu_dict[keys[element]])
-        facility = keys[element]
-        swu.append(swu_list)
-        facilities.append(facility)
-        swu_time[keys[element]] = swu_list
-    swu_sort = sorted(swu_time.items(), key=lambda e: e[
-        1][-1], reverse=True)
-    facilities = [item[0] for item in swu_sort]
-    swus = [item[1] for item in swu_sort]
-    times = np.arange(0, duration, 1)
+    swu_values = swu_series(cur,facilities)[0]
+    swu_times = swu_series(cur,facilities)[1]
+    
+    facilities = [item[0] for item in swu_values.items()]
+    swus = [item[1] for item in swu_values.items()]
+    times = [item[1] for item in swu_times.items()][0]
     plt.stackplot(times, swus, labels=facilities)
     plt.legend(loc='upper left')
     plt.xlabel('Time [months]')
     plt.ylabel('SWU')
     plt.title('SWU by Facility')
     plt.show()
-
 
 def plot_cumulative_power(cur, reactors):
     """
@@ -2306,14 +2347,15 @@ def reactor_map(reactor_location):
     plt.show()
 
 
-def waste_total_trades(sql_filename,sender,receivers):
+def total_isotope_traded(sql_filename,sender,receivers):
     db = cym.dbopen(sql_filename)
     evaler = cym.Evaluator(db)
     waste_recieved = filters.transactions_nuc(evaler,sender,receivers)
     nucids = list(waste_recieved['NucId'])
     times = list(waste_recieved['Time'])
     masses = list(waste_recieved['Mass'])
-    waste_mass = Counter()
+    traded_isotope = Counter()
     for nucids,mass in list(zip(nucids,masses)):
-        waste_mass.update({nucname.name(nucids):mass})  
-    return waste_mass
+        traded_isotope.update({nucname.name(nucids):mass})  
+    return traded_isotope
+

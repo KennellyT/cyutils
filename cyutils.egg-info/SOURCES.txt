@@ -2,6 +2,7 @@ README.rst
 setup.py
 cyutils/__init__.py
 cyutils/analysis.py
+cyutils/economics.py
 cyutils/write.py
 cyutils.egg-info/PKG-INFO
 cyutils.egg-info/SOURCES.txt
