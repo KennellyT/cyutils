@@ -2217,8 +2217,8 @@ def sql_filename(evaler):
     sql_filename: str
         sql cyclus filename
     """
-    filename = evaler.db.name
-    return filename
+    sql_file_name = evaler.db.name
+    return sql_file_name
 
 
 def total_isotope_used(cur, facility):
@@ -2249,7 +2249,15 @@ def total_isotope_used(cur, facility):
 
 
 def waste_map(reactor_location):
-
+    """Returns a map plot of the reactors
+    Parameters
+    ----------
+    reactor_location :  dict
+        dictionary of reactor locations (lat,log) 
+        
+    Returns
+    -------
+    """
     m = Basemap(projection='mill',llcrnrlat=20,urcrnrlat=50,\
                 llcrnrlon=-130,urcrnrlon=-60,resolution='l')
     m.drawcoastlines()
@@ -2269,3 +2277,43 @@ def waste_map(reactor_location):
     plt.title('waste mass map')
     plt.show()
 
+def reactor_map(reactor_location):
+    """Returns a map plot of the reactors
+    Parameters
+    ----------
+    reactor_location :  dict
+        dictionary of reactor locations (lat,log) 
+        
+    Returns
+    -------
+    """
+    m = Basemap(projection='mill',llcrnrlat=20,urcrnrlat=50,\
+                llcrnrlon=-130,urcrnrlon=-60,resolution='l')
+    m.drawcoastlines()
+    m.drawcountries()
+    m.drawstates()
+    m.fillcontinents(color='tan',lake_color='#FFFFFF')
+    m.drawmapboundary(fill_color='#FFFFFF')
+    color_wheel = ['ro','bo','go','yo','mo']
+    reactor_names = list(reactor_location.keys())
+    for i in range(len(reactor_names)):
+        lat = float(reactor_location[reactor_names[i]][0])
+        lon = float(reactor_location[reactor_names[i]][1])
+        x,y = m(lon,lat)
+        m.plot(x,y, color_wheel[i],label = str(reactor_names[i]))
+        plt.legend()
+    plt.title('Reactor location map')
+    plt.show()
+
+
+def waste_total_trades(sql_filename,sender,receivers):
+    db = cym.dbopen(sql_filename)
+    evaler = cym.Evaluator(db)
+    waste_recieved = filters.transactions_nuc(evaler,sender,receivers)
+    nucids = list(waste_recieved['NucId'])
+    times = list(waste_recieved['Time'])
+    masses = list(waste_recieved['Mass'])
+    waste_mass = Counter()
+    for nucids,mass in list(zip(nucids,masses)):
+        waste_mass.update({nucname.name(nucids):mass})  
+    return waste_mass

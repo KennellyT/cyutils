@@ -2,10 +2,7 @@ README.rst
 setup.py
 cyutils/__init__.py
 cyutils/analysis.py
-cyutils/cymetric_analysis.py
-cyutils/merge_coordinates.py
 cyutils/write.py
-cyutils/write_cyclus.py
 cyutils.egg-info/PKG-INFO
 cyutils.egg-info/SOURCES.txt
 cyutils.egg-info/dependency_links.txt
