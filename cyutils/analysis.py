@@ -1660,7 +1660,7 @@ def plot_in_flux_basic(
     plt.xlim(left=0.0)
     plt.ylim(bottom=0.0)
     plt.show()
-
+    return mass_sort
 
 def plot_out_flux_basic(
         cur,
@@ -1916,11 +1916,13 @@ def swu_series(cur,facilities=[]):
     -------
     swu_order: dictionary
         dictionary with "key=Enrichment (facility number), and
-        value=swu timeseries dict"
+        value=swu dict"
+    swu_timeseries: dictionary
+        dictionary with "key=Enrichment (facility number), and
+        value=time dict"    
     """
     swu_order = {}
     swu_timeseries = {}
-    s = []
     agentid = agent_ids(cur, 'Enrichment')
     if len(facilities) != 0:
         agentid = facilities
@@ -1965,7 +1967,6 @@ def cumulative_swu_series(cur,facilities=[]):
     """
     swu_order = {}
     swu_timeseries = {}
-    s = []
     agentid = agent_ids(cur, 'Enrichment')
     if len(facilities) != 0:
         agentid = facilities
