@@ -2289,13 +2289,29 @@ def total_isotope_used(cur, facility):
         total_mass_used[nuclide] = mass
     return total_mass_used
 
+def reactor_location(csv_file):
+    csvfile = open(csv_file, 'r')
+    reader = csv.reader(csvfile)
+    headers = next(reader)
+    data_items = {}
+    for header in headers:
+        data_items[header] = []
+    for row in reader:
+        for h, v in zip(headers, row):
+          data_items[h].append(v)
+    reactor_loc = dict((key,value) for key, value in data_items.items() if key.startswith('Latitude') or key.startswith('Longitude') or key.startswith('Reactor Unit'))
+    reactor_locations = {}
+    for i in range(len(reactor_loc['Reactor Unit'])):
+        reactor_locations[list(reactor_loc['Reactor Unit'])[i]] = list(reactor_loc['Latitude'])[i],list(reactor_loc['Longitude'])[i]
+    return reactor_locations
 
-def waste_map(reactor_location):
+
+def reactor_map(reactor_location):
     """Returns a map plot of the reactors
     Parameters
     ----------
     reactor_location :  dict
-        dictionary of reactor locations (lat,log) 
+        dictionary of reactor locations (Latitude,Longitude) 
         
     Returns
     -------
@@ -2307,46 +2323,21 @@ def waste_map(reactor_location):
     m.drawstates()
     m.fillcontinents(color='#04BAE3',lake_color='#FFFFFF')
     m.drawmapboundary(fill_color='#FFFFFF')
-    color_wheel = ['ro','bo','go','yo','mo']
-    reactor_names = list(reactor_location.keys())
-    for i in range(len(reactor_names)):
-        lat = float(reactor_location[reactor_names[i]][0])
-        lon = float(reactor_location[reactor_names[i]][1])
+    color_wheel = ['ro','bo','go','yo','mo']*50
+    reactor_location_exists= {k: v for k, v in reactor_location.items() if v[0] is not ''}
+    reactor_location_lat_in= {k: v for k, v in reactor_location_exists.items() if 20 <= int(float(v[0])) <= 50 }
+    reactor_location_lon_in= {k: v for k, v in reactor_location_lat_in.items() if -160 <= int(float(v[1])) <= -60 }
+    print(reactor_location_lon_in)
+    reactor_items = list(reactor_location_lon_in.items())
+    for i in range(len(reactor_location_lon_in.keys())):
+        lat = float([item[1][0] for item in reactor_items][i])
+        lon = float([item[1][1] for item in reactor_items][i])
         x,y = m(lon,lat)
-        m.plot(x,y, color_wheel[i],label = str(reactor_names[i]))
+        m.plot(x,y, color_wheel[i],label = str(list(reactor_location_lon_in.keys())[i]))
         
         plt.legend()
     plt.title('waste mass map')
     plt.show()
-
-def reactor_map(reactor_location):
-    """Returns a map plot of the reactors
-    Parameters
-    ----------
-    reactor_location :  dict
-        dictionary of reactor locations (lat,log) 
-        
-    Returns
-    -------
-    """
-    m = Basemap(projection='mill',llcrnrlat=20,urcrnrlat=50,\
-                llcrnrlon=-130,urcrnrlon=-60,resolution='l')
-    m.drawcoastlines()
-    m.drawcountries()
-    m.drawstates()
-    m.fillcontinents(color='tan',lake_color='#FFFFFF')
-    m.drawmapboundary(fill_color='#FFFFFF')
-    color_wheel = ['ro','bo','go','yo','mo']
-    reactor_names = list(reactor_location.keys())
-    for i in range(len(reactor_names)):
-        lat = float(reactor_location[reactor_names[i]][0])
-        lon = float(reactor_location[reactor_names[i]][1])
-        x,y = m(lon,lat)
-        m.plot(x,y, color_wheel[i],label = str(reactor_names[i]))
-        plt.legend()
-    plt.title('Reactor location map')
-    plt.show()
-
 
 def total_isotope_traded(sql_filename,sender,receivers):
     db = cym.dbopen(sql_filename)
