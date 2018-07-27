@@ -6,15 +6,12 @@ import sys
 from itertools import cycle
 from matplotlib import cm
 from pyne import nucname
-import cymetric as cym
-from cymetric import filters
 import pandas as pd
 from collections import Counter
 from mpl_toolkits.basemap import Basemap
 import matplotlib.pyplot as plt
-from mpl_toolkits.basemap import Basemap
 import matplotlib.pyplot as plt
-from cymetric import graphs
+
 if len(sys.argv) < 2:
     print('Usage: python analysis.py [cylus_output_file]')
 
