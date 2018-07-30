@@ -127,6 +127,6 @@ def plot_cumulative_swu_economic_cost(cur,cost_per_swu):
     plt.title('SWU cost by facility')
     plt.show()    
 
-    
+
     
     
