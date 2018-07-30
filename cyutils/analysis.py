@@ -856,9 +856,7 @@ def u_util_calc(cur):
     fuel_usage = np.array(fuel_into_reactors(cur))
 
     u_util_timeseries = np.nan_to_num(fuel_usage / u_supply_timeseries)
-    print('The Average Fuel Utilization Factor is: ')
-    print(sum(u_util_timeseries) / len(u_util_timeseries))
-
+    
     return u_util_timeseries
 
 
@@ -1945,7 +1943,7 @@ def swu_series(cur, facilities=[]):
             swu_per_time.update({swu_times: swu_values})
         time = list(swu_per_time.keys())
         swu = list(swu_per_time.values())
-        for j in np.arange(0, int(time[-1]+1)):
+        for j in np.arange(0, duration):
             if j not in time:
                 time.insert(j, float(j))
                 swu.insert(j, 0)
@@ -1988,7 +1986,7 @@ def cumulative_swu_series(cur, facilities=[]):
             swu_per_time.update({swu_times: swu_values})
         time = list(swu_per_time.keys())
         swu = list(swu_per_time.values())
-        for j in np.arange(0, int(time[-1]+1)):
+        for j in np.arange(0, int(duration)):
             if j not in time:
                 time.insert(j, float(j))
                 swu.insert(j, 0)
@@ -2026,7 +2024,7 @@ def plot_cumulative_swu(cur, facilities=[]):
 
 
 def plot_swu(cur, facilities=[]):
-    """Returns dictionary of swu timeseries for each enrichment plant
+    """plots swu timeseries for each enrichment plant
 
     Parameters
     ----------
@@ -2196,11 +2194,11 @@ def total_isotope_used(cur, facility):
     Returns
     -------
     total_isotopes_mined : dict
-        dictionary of isotopes mined and the total mass mined
+        dictionary of isotopes mined and the total mass used
     """
     flux = 'out'
     isotope_masses_used = cumulative_mass_timeseries(cur, facility, flux)
-    total_isotope = [item[1][0] for item in isotope_masses_used.items()]
+    total_isotope = [item[1][0][-1] for item in isotope_masses_used.items()]
     nuclides = [item[0] for item in isotope_masses_used.items()]
     total_mass_used = {}
     for i in range(len(total_isotope)):
@@ -2286,7 +2284,7 @@ def total_isotope_traded(cur, facility, flux, nucid):
         cumulative mass of isotope of interest
     """
     isotope = nucname.name(nucid)
-    cum_mass = cumulative_mass_timeseries(cur, facility, flux)[0][isotope][-1]
+    cum_mass = cumulative_mass_timeseries(cur, facility, flux)[isotope][0][-1]
     return cum_mass
 
 def reactor_loadings(cur):

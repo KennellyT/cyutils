@@ -71,7 +71,7 @@ def cumulative_swu_economic_cost(cur,cost_per_swu):
             facility_cumulative_swu_cost.update({facility:swu_cost}) 
     return facility_cumulative_swu_cost
 
-def plot_swu_economic_cost(cur,cost_per_swu):
+def plot_swu_economic_cost(cur,cost_per_swu,facilities=[]):
     """Returns plot of swu timeseries for each enrichment plant
 
     Parameters
@@ -84,13 +84,12 @@ def plot_swu_economic_cost(cur,cost_per_swu):
     Returns
     -------
     """
-    swu_values = analysis.swu_series(cur)[0]
-    swu_times = analysis.swu_series(cur)[1]
+    swu_values = analysis.swu_series(cur, facilities)
     facilities = [item[0] for item in swu_values.items()]
-    swus = [item[1] for item in swu_values.items()]
+    swus = [item[1][0] for item in swu_values.items()]
     swu_cost = np.array(cost_per_swu)
     swu_cost_series = [item*swu_cost for item in swus]
-    times = [item[1] for item in swu_times.items()][0]
+    times = [item[1][1] for item in swu_values.items()][0]
     plt.stackplot(times, swu_cost_series, labels=facilities)
     plt.legend(loc='upper left')
     plt.xlabel('Time [months]')
