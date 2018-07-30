@@ -1,14 +1,25 @@
-Metadata-Version: 1.0
+Metadata-Version: 2.1
 Name: cyutils
-Version: 0.0.0
-Summary: Cyclus analysis package
-Home-page: UNKNOWN
+Version: 0.1.1
+Summary: Cyclus analysis package.
+Home-page: http://github.com/KennellyT/cyutils/
 Author: Tyler Kennelly
-Author-email: kennlly2@illinois.edu
-License: LICENSE.txt
+License: BSD 3-Clause License
 Description: cyutils: The Cyclus Ulitites package
         =====================================
         The Cyutils project intergrates and provides the user with a common and usable set of tools and functions that will make reading, writing, and analyzing cyclus files easier and user friendly.
         
         
-Platform: UNKNOWN
+Platform: any
+Classifier: Development Status :: 1 - Planning
+Classifier: Intended Audience :: Education
+Classifier: Intended Audience :: Science/Research
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: BSD 3-Clause
+Classifier: Natural Language :: English
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Topic :: Scientific/Engineering
+Classifier: Topic :: Scientific/Engineering :: Physics
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Provides-Extra: testing

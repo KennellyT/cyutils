@@ -4,10 +4,12 @@ import matplotlib.pyplot as plt
 import sqlite3 as lite
 import sys
 from itertools import cycle
-import matplotlib
 from matplotlib import cm
 from pyne import nucname
-
+import pandas as pd
+from collections import Counter
+from mpl_toolkits.basemap import Basemap
+import matplotlib.pyplot as plt
 
 if len(sys.argv) < 2:
     print('Usage: python analysis.py [cylus_output_file]')
@@ -216,7 +218,7 @@ def timeseries(specific_search, duration, kg_to_tons):
 
 
 def timeseries_cum(specific_search, duration, kg_to_tons):
-    """returns a timeseries list from specific_search data.
+    """Returns a timeseries list from specific_search data.
 
     Parameters
     ----------
@@ -308,7 +310,6 @@ def facility_commodity_flux(cur, agentids,
                              'time, sum(quantity), qualid') +
                  ' and (commodity = "' + str(comm) +
                  '") GROUP BY time')
-        # outflux changes receiverid to senderid
         if is_outflux:
             query = query.replace('receiverid', 'senderid')
 
@@ -400,7 +401,7 @@ def facility_commodity_flux_isotopics(
     is_outflux: bool
         gets outflux if True, influx if False
     is_cum: bool
-        gets cumulative timeseris if True, monthly value if False
+        gets cumulative timeseries if True, monthly value if False
 
     Returns
     -------
@@ -520,7 +521,6 @@ def power_capacity(cur):
     init_year, init_month, duration, timestep = simulation_timesteps(cur)
     insts = institutions(cur)
 
-    # get power cap values
     entry_exit = cur.execute('SELECT max(value), timeseriespower.agentid, '
                              'parentid, entertime, entertime + lifetime'
                              ' FROM agententry '
@@ -546,6 +546,8 @@ def power_capacity_of_region(cur, region_name):
         "dictionary with key=government and
         value=timeseries list of installed capacity"
     """
+    init_year, init_month, duration, timestep = simulation_timesteps(cur)
+    insts = institutions(cur)
     parentid = cur.exectue('SELECT agentid FROM agententry WHERE '
                            'Prototype LIKE "%' + region_name + '%" '
                            'AND Kind = "Inst"').fetchone()
@@ -557,6 +559,8 @@ def power_capacity_of_region(cur, region_name):
                              'ON agententry.agentid = timeseriespower.agentid '
                              'GROUP BY timeseriespower.agentid '
                              'WHERE parentid = %i' % parentid[0]).fetchall()
+
+    return capacity_calc(insts, timestep, entry_exit)
 
 
 def deployments(cur):
@@ -577,7 +581,6 @@ def deployments(cur):
     init_year, init_month, duration, timestep = simulation_timesteps(cur)
     insts = institutions(cur)
 
-    # get power cap values
     entry = cur.execute('SELECT max(value), timeseriespower.agentid, '
                         'parentid, entertime FROM agententry '
                         'INNER JOIN timeseriespower '
@@ -655,7 +658,6 @@ def nat_u_timeseries(cur, is_cum=True):
     """
     init_year, init_month, duration, timestep = simulation_timesteps(cur)
 
-    # Get Nat U feed to enrichment from timeseriesenrichmentfeed
     feed = cur.execute('SELECT time, sum(value) '
                        'FROM timeseriesenrichmentfeed '
                        'GROUP BY time').fetchall()
@@ -849,18 +851,36 @@ def u_util_calc(cur):
         Timeseries of Uranium utilization factor
     Prints simulation average Uranium Utilization
     """
-    # timeseries of natural uranium
     u_supply_timeseries = np.array(nat_u_timeseries(cur))
 
-    # timeseries of fuel into reactors
     fuel_usage = np.array(fuel_into_reactors(cur))
 
-    # timeseries of Uranium utilization
     u_util_timeseries = np.nan_to_num(fuel_usage / u_supply_timeseries)
     print('The Average Fuel Utilization Factor is: ')
     print(sum(u_util_timeseries) / len(u_util_timeseries))
 
     return u_util_timeseries
+
+
+def plot_uranium_utilization(cur):
+    """Plots uranium utilization factor of fuel cycle
+
+    Parameters
+    ----------
+    cur: sqlite cursor
+        sqlite cursor
+
+    Returns
+    -------
+    none
+    """
+
+    u_util_timeseries = u_util_calc(cur)
+    plt.plot(u_util_timeseries, label='Uranium utilization')
+    plt.xlabel('time [months]')
+    plt.ylabel('Uranium Utilization')
+    plt.legend()
+    plt.show()
 
 
 def commodity_origin(cur, commodity, prototypes, is_cum=True):
@@ -954,7 +974,8 @@ def waste_mass_series(isotopes, mass_timeseries, duration):
     -------
     waste_mass: dictionary
         dictionary with "key=isotope, and
-        value=mass timeseries of each unique isotope"   """
+        value=mass timeseries of each unique isotope"   
+    """
     waste_mass = {}
     for isotope in isotopes:
         postion = [i for i, x in enumerate(isotopes) if x == isotope][0]
@@ -981,7 +1002,8 @@ def waste_timeseries(isotopes, mass_timeseries, duration):
     -------
     waste_time: dictionary
         dictionary with "key=isotope, and
-        value=mass timeseries of each unique isotope"   """
+        value=mass timeseries of each unique isotope"   
+    """
     waste_time = {}
     for isotope in isotopes:
         postion = [i for i, x in enumerate(isotopes) if x == isotope][0]
@@ -1094,11 +1116,8 @@ def multiple_line_plots(dictionary, timestep,
     Returns
     -------
     """
-    # set different colors for each bar
     color_index = 0
-    # for every country, create bar chart with different color
     for key in dictionary:
-        # label is the name of the nuclide (converted from ZZAAA0000 format)
         if isinstance(key, str) is True:
             label = key.replace('_government', '')
         else:
@@ -1147,12 +1166,9 @@ def combined_line_plot(dictionary, timestep,
     Returns
     -------
     """
-    # set different colors for each bar
     color_index = 0
     plt.figure()
-    # for every country, create bar chart with different color
     for key in dictionary:
-        # label is the name of the nuclide (converted from ZZAAA0000 format)
         if isinstance(key, str) is True:
             label = key.replace('_government', '')
         else:
@@ -1208,14 +1224,10 @@ def double_axis_bar_line_plot(dictionary1, dictionary2, timestep,
     Returns
     -------
     """
-    # set different colors for each bar
-
     fig, ax1 = plt.subplots()
-    # for every country, create bar chart with different color
     color1 = 'r'
     color2 = 'b'
     for key in dictionary1:
-        # label is the name of the nuclide (converted from ZZAAA0000 format)
         if isinstance(key, str) is True:
             label = key.replace('_government', '')
         else:
@@ -1239,7 +1251,6 @@ def double_axis_bar_line_plot(dictionary1, dictionary2, timestep,
     lines = ['-', '--', '-.', ':']
     linecycler = cycle(lines)
     for key in dictionary2:
-        # label is the name of the nuclide (converted from ZZAAA0000 format)
         if isinstance(key, str) is True:
             label = key.replace('_government', '')
         else:
@@ -1296,16 +1307,13 @@ def double_axis_line_line_plot(dictionary1, dictionary2, timestep,
     Returns
     -------
     """
-    # set different colors for each bar
     lines = ['-', '--', '-.', ':']
     linecycler = cycle(lines)
     fig, ax1 = plt.subplots()
     top = True
     color1 = 'r'
     color2 = 'b'
-    # for every country, create bar chart with different color
     for key in dictionary1:
-        # label is the name of the nuclide (converted from ZZAAA0000 format)
         if isinstance(key, str) is True:
             label = key.replace('_government', '')
         else:
@@ -1335,7 +1343,6 @@ def double_axis_line_line_plot(dictionary1, dictionary2, timestep,
     linecycler = cycle(lines)
 
     for key in dictionary2:
-        # label is the name of the nuclide (converted from ZZAAA0000 format)
         if isinstance(key, str) is True:
             label = key.replace('_government', '')
         else:
@@ -1387,18 +1394,15 @@ def stacked_bar_chart(dictionary, timestep,
     Returns
     -------
     """
-    # set different colors for each bar
     color_index = 0
     top_index = True
     prev = np.zeros(1)
     plots = []
-    # for every country, create bar chart with different color
     for key in dictionary:
         if isinstance(key, str) is True:
             label = key.replace('_government', '')
         else:
             label = str(key)
-        # very first country does not have a 'bottom' argument
         if sum(dictionary[key]) == 0:
             print(label + ' has no values')
         elif top_index is True:
@@ -1413,8 +1417,6 @@ def stacked_bar_chart(dictionary, timestep,
             top_index = False
             plots.append(plot)
 
-        # All curves except the first have a 'bottom'
-        # defined by the previous curve
         else:
             plot = plt.bar(x=timestep_to_years(init_year, timestep),
                            height=dictionary[key],
@@ -1429,7 +1431,6 @@ def stacked_bar_chart(dictionary, timestep,
 
         color_index += 1
 
-    # plot
     if sum(sum(dictionary[k]) for k in dictionary) > 1000:
         ax = plt.gca()
         ax.get_yaxis().set_major_formatter(
@@ -1460,7 +1461,7 @@ def plot_power(cur):
     init_year, init_month, duration, timestep = simulation_timesteps(cur)
     power = power_capacity(cur)
     stacked_bar_chart(power, timestep,
-                      'Years', 'Net_Capacity [GWe]',
+                      'Years', 'Net Capacity [GWe]',
                       'Net Capacity vs Time',
                       'power_plot', init_year)
 
@@ -1469,186 +1470,6 @@ def plot_power(cur):
                       'Years', 'Number of Reactors',
                       'Number of Reactors vs Time',
                       'num_plot', init_year)
-
-
-def plot_in_out_flux(
-        cur,
-        facility,
-        influx_bool,
-        title,
-        is_cum=False,
-        is_tot=False):
-    """plots timeseries influx/ outflux from facility name in kg.
-
-    Inputs:
-    cur: sqlite cursor
-        sqlite cursor
-    facility: str
-        facility name
-    influx_bool: bool
-        if true, calculates influx,
-        if false, calculates outflux
-    title: str
-        title of the multi line plot
-    outputname: str
-        filename of the multi line plot file
-    is_cum: Boolean:
-        true: add isotope masses over time
-        false: do not add isotope masses at each timestep
-
-    Outputs:
-    none
-    """
-
-    agentids = prototype_id(cur, facility)
-
-    if influx_bool is True:
-        resources = cur.execute(exec_string(agentids,
-                                            'transactions.receiverId',
-                                            'time, sum(quantity), '
-                                            'qualid') +
-                                ' GROUP BY time, qualid').fetchall()
-    else:
-        resources = cur.execute(exec_string(agentids,
-                                            'transactions.senderId',
-                                            'time, sum(quantity), '
-                                            'qualid') +
-                                ' GROUP BY time, qualid').fetchall()
-
-    compositions = cur.execute('SELECT qualid, nucid, massfrac '
-                               'FROM compositions').fetchall()
-
-    init_year, init_month, duration, timestep = simulation_timesteps(cur)
-
-    transactions = isotope_transactions(resources, compositions)
-
-    time_mass = []
-    time_waste = {}
-    for key in transactions.keys():
-
-        time_mass.append(transactions[key])
-        time_waste[key] = transactions[key]
-
-    waste_mass = waste_mass_series(transactions.keys(),
-                                   time_mass,
-                                   duration)
-
-    if is_cum == False and is_tot == False:
-        keys = []
-        for key in waste_mass.keys():
-            keys.append(key)
-
-        for element in range(len(keys)):
-            time_and_mass = np.array(time_waste[keys[element]])
-            time = [item[0] for item in time_and_mass]
-            mass = [item[1] for item in time_and_mass]
-            plt.plot(
-                time,
-                mass,
-                linestyle=' ',
-                marker='.',
-                markersize=1,
-                label=nucname.name(
-                    keys[0]))
-
-        plt.legend(loc='upper left')
-        plt.title(title)
-        plt.xlabel('time [months]')
-        plt.ylabel('mass [kg]')
-        plt.xlim(left=0.0)
-        plt.ylim(bottom=0.0)
-        plt.show()
-
-    elif is_cum and is_tot == False:
-        value = 0
-        keys = []
-        for key in waste_mass.keys():
-            keys.append(key)
-
-        for element in range(len(waste_mass.keys())):
-            placeholder = []
-            value = 0
-            key = keys[element]
-
-            for index in range(len(waste_mass[key])):
-                value += waste_mass[key][index]
-                placeholder.append(value)
-            waste_mass[key] = placeholder
-
-        times = []
-        nuclides = []
-        masstime = {}
-        for element in range(len(keys)):
-            time_and_mass = np.array(time_waste[keys[element]])
-            time = [item[0] for item in time_and_mass]
-            mass = [item[1] for item in time_and_mass]
-            nuclide = nucname.name(keys[element])
-            mass_cum = np.cumsum(mass)
-            times.append(time)
-            nuclides.append(str(nuclide))
-            masstime[nucname.name(keys[element])] = mass_cum
-        mass_sort = sorted(masstime.items(), key=lambda e: e[
-                           1][-1], reverse=True)
-        nuclides = [item[0] for item in mass_sort]
-        masses = [item[1] for item in mass_sort]
-        plt.stackplot(times[0], masses, labels=nuclides)
-        plt.legend(loc='upper left')
-        plt.title(title)
-        plt.xlabel('time [months]')
-        plt.ylabel('mass [kg]')
-        plt.xlim(left=0.0)
-        plt.ylim(bottom=0.0)
-        plt.show()
-
-    elif is_cum == False and is_tot == True:
-        keys = []
-        for key in waste_mass.keys():
-            keys.append(key)
-
-        total_mass = np.zeros(len(waste_mass[keys[0]]))
-        for element in range(len(keys)):
-            for index in range(len(waste_mass[keys[0]])):
-                total_mass[index] += waste_mass[keys[element]][index]
-
-        total_mass[total_mass == 0] = np.nan
-        plt.plot(total_mass, linestyle=' ', marker='.', markersize=1)
-        plt.title(title)
-        plt.xlabel('time [months]')
-        plt.ylabel('mass [kg]')
-        plt.xlim(left=0.0)
-        plt.ylim(bottom=0.0)
-        plt.show()
-
-    elif is_cum and is_tot:
-        value = 0
-        keys = []
-        for key in waste_mass.keys():
-            keys.append(key)
-
-        times = []
-        nuclides = []
-        masstime = {}
-        for element in range(len(keys)):
-            time_and_mass = np.array(time_waste[keys[element]])
-            time = [item[0] for item in time_and_mass]
-            mass = [item[1] for item in time_and_mass]
-            nuclide = nucname.name(keys[element])
-            mass_cum = np.cumsum(mass)
-            times.append(time)
-            nuclides.append(str(nuclide))
-            masstime[nucname.name(keys[element])] = mass_cum
-        mass_sort = sorted(masstime.items(), key=lambda e: e[
-                           1][-1], reverse=True)
-        nuclides = [item[0] for item in mass_sort]
-        masses = [item[1] for item in mass_sort]
-        plt.stackplot(times[0], masses, labels=nuclides)
-        plt.legend(loc='upper left')
-        plt.title(title)
-        plt.xlabel('time [months]')
-        plt.ylabel('mass [kg]')
-        plt.xlim(left=0.0)
-        plt.ylim(bottom=0.0)
-        plt.show()
 
 
 def entered_power(cur):
@@ -1702,3 +1523,814 @@ def source_throughput(cur, duration, frac_prod, frac_tail):
     print('Throughput should be at least: ' +
           str(feed_factor * avg_fuel_used) + ' [kg]')
     return feed_factor * avg_fuel_used
+
+
+def plot_in_flux_cumulative(
+        cur,
+        facility,
+        title):
+    """plots timeseries influx/ outflux from facility name in kg.
+
+    Parameters:
+    ----------
+    cur: sqlite cursor
+        sqlite cursor
+    facility: str
+        facility name
+    influx_bool: bool
+        if true, calculates influx,
+        if false, calculates outflux
+    title: str
+        title of the multi line plot
+    outputname: str
+        filename of the multi line plot file
+    is_cum: Boolean:
+        true: add isotope masses over time
+        false: do not add isotope masses at each timestep
+
+    Returns:
+    --------
+    """
+
+    masstime = cumulative_mass_timeseries(cur, facility, flux='in')
+    nuclides = [item[0] for item in masstime.items()]
+    masses = [item[1][0] for item in masstime.items()]
+    times = [item[1][1] for item in masstime.items()]
+    mass_sort = sorted(masstime.items(), key=lambda e: e[
+        1][0][-1], reverse=True)
+    nuclides = [item[0] for item in mass_sort]
+    masses = [item[1][0] for item in mass_sort]
+    plt.stackplot(times[0], masses, labels=nuclides)
+    plt.legend(loc='upper left')
+    plt.title(title)
+    plt.xlabel('time [months]')
+    plt.ylabel('mass [kg]')
+    plt.xlim(left=0.0)
+    plt.ylim(bottom=0.0)
+    plt.show()
+
+
+def plot_out_flux_cumulative(
+        cur,
+        facility,
+        title):
+    """plots timeseries influx/ outflux from facility name in kg.
+
+    Parameters:
+    ----------
+    cur: sqlite cursor
+        sqlite cursor
+    facility: str
+        facility name
+    influx_bool: bool
+        if true, calculates influx,
+        if false, calculates outflux
+    title: str
+        title of the multi line plot
+    outputname: str
+        filename of the multi line plot file
+    is_cum: Boolean:
+        true: add isotope masses over time
+        false: do not add isotope masses at each timestep
+
+    Returns:
+    --------
+    """
+
+    masstime = cumulative_mass_timeseries(cur, facility, flux='out')
+    nuclides = [item[0] for item in masstime.items()]
+    masses = [item[1][0] for item in masstime.items()]
+    times = [item[1][1] for item in masstime.items()]
+    mass_sort = sorted(masstime.items(), key=lambda e: e[
+        1][0][-1], reverse=True)
+    nuclides = [item[0] for item in mass_sort]
+    masses = [item[1][0] for item in mass_sort]
+    plt.stackplot(times[0], masses, labels=nuclides)
+    plt.legend(loc='upper left')
+    plt.title(title)
+    plt.xlabel('time [months]')
+    plt.ylabel('mass [kg]')
+    plt.xlim(left=0.0)
+    plt.ylim(bottom=0.0)
+    plt.show()
+
+
+def plot_in_flux_basic(
+        cur,
+        facility,
+        title):
+    """plots timeseries influx/ outflux from facility name in kg.
+
+    Parameters:
+    ----------
+    cur: sqlite cursor
+        sqlite cursor
+    facility: str
+        facility name
+    influx_bool: bool
+        if true, calculates influx,
+        if false, calculates outflux
+    title: str
+        title of the multi line plot
+    outputname: str
+        filename of the multi line plot file
+    is_cum: Boolean:
+        true: add isotope masses over time
+        false: do not add isotope masses at each timestep
+
+    Returns:
+    --------
+    """
+    masstime = mass_timeseries(cur, facility, flux='in')
+    nuclides = [item[0] for item in masstime.items()]
+    masses = [item[1][0] for item in masstime.items()]
+    times = [item[1][1] for item in masstime.items()]
+    mass_sort = sorted(masstime.items(), key=lambda e: e[
+        1][0][-1], reverse=True)
+    nuclides = [item[0] for item in mass_sort]
+    masses = [item[1][0] for item in mass_sort]
+    for i in range(len(times)):
+        plt.plot(times[i], masses[i], label=nuclides[i])
+    plt.legend(loc='upper left')
+    plt.title(title)
+    plt.xlabel('time [months]')
+    plt.ylabel('mass [kg]')
+    plt.xlim(left=0.0)
+    plt.ylim(bottom=0.0)
+    plt.show()
+
+
+def plot_out_flux_basic(
+        cur,
+        facility,
+        title):
+    """plots timeseries influx/ outflux from facility name in kg.
+
+    Parameters:
+    ----------
+    cur: sqlite cursor
+        sqlite cursor
+    facility: str
+        facility name
+    influx_bool: bool
+        if true, calculates influx,
+        if false, calculates outflux
+    title: str
+        title of the multi line plot
+    outputname: str
+        filename of the multi line plot file
+    is_cum: Boolean:
+        true: add isotope masses over time
+        false: do not add isotope masses at each timestep
+
+    Returns:
+    --------
+    """
+
+    masstime = mass_timeseries(cur, facility, flux='out')
+    nuclides = [item[0] for item in masstime.items()]
+    masses = [item[1][0] for item in masstime.items()]
+    times = [item[1][1] for item in masstime.items()]
+    mass_sort = sorted(masstime.items(), key=lambda e: e[
+        1][0][-1], reverse=True)
+    nuclides = [item[0] for item in mass_sort]
+    masses = [item[1][0] for item in mass_sort]
+    for i in range(len(times)):
+        plt.plot(times[i], masses[i], label=nuclides[i])
+    plt.legend(loc='upper left')
+    plt.title(title)
+    plt.xlabel('time [months]')
+    plt.ylabel('mass [kg]')
+    plt.xlim(left=0.0)
+    plt.ylim(bottom=0.0)
+    plt.show()
+
+
+def plot_net_flux_cumulative(
+        cur,
+        facility,
+        title):
+    """
+    Plots net flux of all isotopes over the duration of the simulation.
+
+    Parameters
+    ----------
+    cur : sqlite cursor
+        sqlite cursor
+    facility : str
+        name of facility
+    title : str
+        title of plot
+    Returns
+    -------
+    """
+
+    masstime_in = cumulative_mass_timeseries(cur, facility, flux='in')
+    times_in = [item[1][1] for item in masstime_in.items()]
+    mass_sort_in = sorted(masstime_in.items(), key=lambda e: e[
+        1][0][-1], reverse=True)
+    nuclides_in = [item[0] for item in mass_sort_in]
+    masses_in = [item[1][0] for item in mass_sort_in]
+    masstime_out = cumulative_mass_timeseries(cur, facility, flux='out')
+    times_out = [item[1][1] for item in masstime_out.items()]
+    mass_sort_out = sorted(masstime_out.items(), key=lambda e: e[
+        1][0][-1], reverse=True)
+    nuclides_out = [item[0] for item in mass_sort_out]
+    masses_out = [-item[1][0] for item in mass_sort_out]
+    plt.stackplot(times_in[0], masses_in, labels=nuclides_in)
+    plt.stackplot(times_out[0], masses_out, labels=nuclides_out)
+    plt.legend(loc='upper left')
+    plt.title(title)
+    plt.xlabel('time [months]')
+    plt.ylabel('mass [kg]')
+    plt.xlim(left=0.0)
+    plt.show()
+
+
+def fill_skipped_timesteps(transactions):
+    """
+    Returns dictionary of mass timeseries of each isotope transaction at each timestep.
+    Parameters
+    ----------
+    transactions : dict
+
+    Returns
+    -------
+    masstime : dict
+        dictionary of isotopes and their mass series and time series
+
+    """
+    nucids = []
+    for nuclide in transactions.keys():
+        nucids.append(nuclide)
+
+    nuclides = []
+    masstime = {}
+    for element in nucids:
+        time_and_mass = np.array(transactions[element])
+        time = [item[0] for item in time_and_mass]
+        mass = [item[1] for item in time_and_mass]
+        mass_per_time = Counter()
+        for time, mass in time_and_mass:
+            mass_per_time.update({time: mass})
+        time = list(mass_per_time.keys())
+        mass_val = list(mass_per_time.values())
+        nuclide = nucname.name(element)
+        for j in np.arange(0, int(time[-1]+1)):
+            if j not in time:
+                time.insert(j, float(j))
+                mass_val.insert(j, 0)
+        nuclides.append(str(nuclide))
+        masstime[nucname.name(element)] = [mass_val, time]
+    return masstime
+
+
+def fill_skipped_timesteps_cumulative(transactions):
+    """
+    Returns dictionary of cumulative mass timeseries of each isotope transaction at each timestep.
+    Parameters
+    ----------
+    transactions : dict
+
+    Returns
+    -------
+    masstime : dict
+        dictionary of isotopes and their mass series and time series
+
+    """
+    nucids = []
+    for nuclide in transactions.keys():
+        nucids.append(nuclide)
+
+    nuclides = []
+    masstime = {}
+    for element in nucids:
+        time_and_mass = np.array(transactions[element])
+        time = [item[0] for item in time_and_mass]
+        mass = [item[1] for item in time_and_mass]
+        mass_per_time = Counter()
+        for time, mass in time_and_mass:
+            mass_per_time.update({time: mass})
+        time = list(mass_per_time.keys())
+        mass_val = list(mass_per_time.values())
+        nuclide = nucname.name(element)
+        for j in np.arange(0, int(time[-1]+1)):
+            if j not in time:
+                time.insert(j, float(j))
+                mass_val.insert(j, 0)
+        nuclides.append(str(nuclide))
+        mass_val = np.cumsum(mass_val)
+        masstime[nucname.name(element)] = [mass_val, time]
+    return masstime
+
+
+def mass_timeseries(cur, facility, flux):
+    """
+    Returns dictionary of mass timeseries of each isotope at a facility.
+    Parameters
+    ----------
+    cur : sqlite cursor
+        sqlite cursor
+    facility : str
+        name of facility
+    flux : str
+        direction of flux
+    Returns
+    -------
+    mass_timeseries : dict
+        dictionary of isotopes and their mass series and time series
+
+    """
+    agentids = prototype_id(cur, facility)
+
+    if flux == 'in':
+        resources = cur.execute(exec_string(agentids,
+                                            'transactions.receiverId',
+                                            'time, sum(quantity), '
+                                            'qualid') +
+                                ' GROUP BY time, qualid').fetchall()
+    else:
+        resources = cur.execute(exec_string(agentids,
+                                            'transactions.senderId',
+                                            'time, sum(quantity), '
+                                            'qualid') +
+                                ' GROUP BY time, qualid').fetchall()
+
+    compositions = cur.execute('SELECT qualid, nucid, massfrac '
+                               'FROM compositions').fetchall()
+
+    init_year, init_month, duration, timestep = simulation_timesteps(cur)
+
+    transactions = isotope_transactions(resources, compositions)
+    mass_timeseries = fill_skipped_timesteps(transactions)
+    return mass_timeseries
+
+
+def cumulative_mass_timeseries(cur, facility, flux):
+    """
+    Returns dictionary of the cumulative mass timeseries of each isotope at a facility.
+    Parameters
+    ----------
+    cur : sqlite cursor
+        sqlite cursor
+    facility : str
+        name of facility
+    flux : str
+        direction of flux
+    Returns
+    -------
+    mass_timeseries : dict
+        dictionary of isotopes and their mass series and time series
+
+    """
+    agentids = prototype_id(cur, facility)
+
+    if flux == 'in':
+        resources = cur.execute(exec_string(agentids,
+                                            'transactions.receiverId',
+                                            'time, sum(quantity), '
+                                            'qualid') +
+                                ' GROUP BY time, qualid').fetchall()
+    else:
+        resources = cur.execute(exec_string(agentids,
+                                            'transactions.senderId',
+                                            'time, sum(quantity), '
+                                            'qualid') +
+                                ' GROUP BY time, qualid').fetchall()
+
+    compositions = cur.execute('SELECT qualid, nucid, massfrac '
+                               'FROM compositions').fetchall()
+
+    init_year, init_month, duration, timestep = simulation_timesteps(cur)
+
+    transactions = isotope_transactions(resources, compositions)
+
+    mass_timeseries = fill_skipped_timesteps_cumulative(transactions)
+
+    return(mass_timeseries)
+
+
+def swu_series(cur, facilities=[]):
+    """Returns dictionary of swu timeseries for each enrichment plant
+
+    Parameters
+    ----------
+    cur: sqlite cursor
+        sqlite cursor
+    facilities : list
+        list of facilities to plot
+
+    Returns
+    -------
+    swu_timeseries: dictionary
+        dictionary with "key=Enrichment (facility number), and
+        value = swu, time"    
+    """
+    swu_timeseries = {}
+    agentid = agent_ids(cur, 'Enrichment')
+    if len(facilities) != 0:
+        agentid = facilities
+    init_year, init_month, duration, timestep = simulation_timesteps(cur)
+    for num in agentid:
+        swu_data = cur.execute('SELECT time, SWU '
+                               'FROM enrichments '
+                               'WHERE id = ' + str(num)).fetchall()
+
+        swu_dataseries = np.array(swu_data)
+        swu_times = [item[0] for item in swu_dataseries]
+        swu_values = [item[1] for item in swu_dataseries]
+
+        swu_per_time = Counter()
+        for swu_times, swu_values in swu_dataseries:
+            swu_per_time.update({swu_times: swu_values})
+        time = list(swu_per_time.keys())
+        swu = list(swu_per_time.values())
+        for j in np.arange(0, int(time[-1]+1)):
+            if j not in time:
+                time.insert(j, float(j))
+                swu.insert(j, 0)
+        swu_timeseries['Enrichment_' + str(num)] = [swu, time]
+    return swu_timeseries
+
+
+def cumulative_swu_series(cur, facilities=[]):
+    """Returns dictionary of swu timeseries for each enrichment plant
+
+    Parameters
+    ----------
+    cur: sqlite cursor
+        sqlite cursor
+    facilities : list
+        list of facilities to plot
+
+    Returns
+    -------
+    swu_timeseries: dictionary
+        dictionary with "key=Enrichment (facility number), and
+        value = swu, time"
+    """
+    swu_timeseries = {}
+    agentid = agent_ids(cur, 'Enrichment')
+    if len(facilities) != 0:
+        agentid = facilities
+    init_year, init_month, duration, timestep = simulation_timesteps(cur)
+    for num in agentid:
+        swu_data = cur.execute('SELECT time, SWU '
+                               'FROM enrichments '
+                               'WHERE id = ' + str(num)).fetchall()
+
+        swu_dataseries = np.array(swu_data)
+        swu_times = [item[0] for item in swu_dataseries]
+        swu_values = [item[1] for item in swu_dataseries]
+
+        swu_per_time = Counter()
+        for swu_times, swu_values in swu_dataseries:
+            swu_per_time.update({swu_times: swu_values})
+        time = list(swu_per_time.keys())
+        swu = list(swu_per_time.values())
+        for j in np.arange(0, int(time[-1]+1)):
+            if j not in time:
+                time.insert(j, float(j))
+                swu.insert(j, 0)
+        swu_cum = np.cumsum(swu)
+        swu_timeseries['Enrichment_' + str(num)] = [swu_cum, time]
+    return swu_timeseries
+
+
+def plot_cumulative_swu(cur, facilities=[]):
+    """returns dictionary of swu timeseries for each enrichment plant
+
+    Parameters
+    ----------
+    cur: sqlite cursor
+        sqlite cursor
+    facilities : list
+        list of facilities to plot
+
+    Returns
+    -------
+    swu_dict: dictionary
+        dictionary with "key=Enrichment (facility number), and
+        value=swu timeseries list"
+    """
+    swu_values = cumulative_swu_series(cur, facilities)
+    facilities = [item[0] for item in swu_values.items()]
+    swus = [item[1][0] for item in swu_values.items()]
+    times = [item[1][1] for item in swu_values.items()][0]
+    plt.stackplot(times, swus, labels=facilities)
+    plt.legend(loc='upper left')
+    plt.xlabel('Time [months]')
+    plt.ylabel('SWU')
+    plt.title('Cumulative SWU by Facility')
+    plt.show()
+
+
+def plot_swu(cur, facilities=[]):
+    """Returns dictionary of swu timeseries for each enrichment plant
+
+    Parameters
+    ----------
+    cur: sqlite cursor
+        sqlite cursor
+    facilities : list
+        list of facilities to plot
+
+    Returns
+    -------
+
+    """
+    swu_values = swu_series(cur, facilities)
+    facilities = [item[0] for item in swu_values.items()]
+    swus = [item[1][0] for item in swu_values.items()]
+    times = [item[1][1] for item in swu_values.items()][0]
+    plt.stackplot(times, swus, labels=facilities)
+    plt.legend(loc='upper left')
+    plt.xlabel('Time [months]')
+    plt.ylabel('SWU')
+    plt.title('SWU by Facility')
+    plt.show()
+
+
+def plot_cumulative_power(cur, reactors):
+    """
+    Plots cumulative power of reactor fleet over the simulation duration.
+
+    Parameters
+    ----------
+    cur : sqlite cursor
+        sqlite cursor
+    reactors : list
+        list of reactors to plot
+    Returns
+    -------
+    """
+    power_dict = {}
+    agentid = agent_ids(cur, 'Reactor')
+    if len(reactors) != 0:
+        agentid = reactors
+    init_year, init_month, duration, timestep = simulation_timesteps(cur)
+
+    for num in agentid:
+        power_data = cur.execute('SELECT time, value '
+                                 'FROM timeseriespower '
+                                 'WHERE agentid = ' + str(num)).fetchall()
+        power_timeseries = timeseries_cum(power_data, duration, False)
+        power_dict['Reactor_' + str(num)] = power_timeseries
+
+    keys = []
+    for key in power_dict.keys():
+        keys.append(key)
+    power = []
+    reactors = []
+    power_time = {}
+    for element in range(len(keys)):
+        power_level = np.array(power_dict[keys[element]])
+        reactor = keys[element]
+        power.append(power_level)
+        reactors.append(reactor)
+        power_time[keys[element]] = power_level
+    power_sort = sorted(power_time.items(), key=lambda e: e[
+        1][-1], reverse=True)
+    reactors = [item[0] for item in power_sort]
+    powers = [item[1] for item in power_sort]
+    times = np.arange(0, duration, 1)
+    plt.stackplot(times, powers, labels=reactors)
+    plt.legend(loc='upper left')
+    plt.xlabel('Time [months]')
+    plt.ylabel('Power [MWe]')
+    plt.title('Power: cumulative')
+    plt.show()
+
+
+def plot_power_reactor(cur, reactors):
+    """
+    Plots power of reactor fleet over the simulation duration.
+
+    Parameters
+    ----------
+    cur :  mlite cursor
+        sqlite cursor
+    reactors : list
+        list of reactors to plot
+
+    Returns
+    -------
+    """
+    power_dict = {}
+    agentid = agent_ids(cur, 'Reactor')
+    if len(reactors) != 0:
+        agentid = reactors
+    init_year, init_month, duration, timestep = simulation_timesteps(cur)
+
+    for num in agentid:
+        power_data = cur.execute('SELECT time, value '
+                                 'FROM timeseriespower '
+                                 'WHERE agentid = ' + str(num)).fetchall()
+        power_timeseries = timeseries(power_data, duration, False)
+        power_dict['Reactor_' + str(num)] = power_timeseries
+
+    keys = []
+    for key in power_dict.keys():
+        keys.append(key)
+    power = []
+    reactors = []
+    power_time = {}
+    for element in range(len(keys)):
+        power_list = np.array(power_dict[keys[element]])
+        reactor = keys[element]
+        power.append(power_list)
+        reactors.append(reactor)
+        power_time[keys[element]] = power_list
+    power_sort = sorted(power_time.items(), key=lambda e: e[
+        1][-1], reverse=True)
+    reactors = [item[0] for item in power_sort]
+    powers = [item[1] for item in power_sort]
+    times = np.arange(0, duration, 1)
+    plt.stackplot(times, powers, labels=reactors)
+    plt.legend(loc='upper left')
+    plt.xlabel('Time [months]')
+    plt.ylabel('Power [MWe]')
+    plt.title('Reactor Power')
+    plt.show()
+
+
+def powerseries_reactor(cur, reactors):
+    """
+    Returns power of reactor fleet over the simulation duration.
+
+    Parameters
+    ----------
+    cur :  mlite cursor
+        sqlite cursor
+    reactors : list
+        list of reactors to plot
+
+    Returns
+    -------
+    """
+    power_dict = {}
+    agentid = agent_ids(cur, 'Reactor')
+    if len(reactors) != 0:
+        agentid = reactors
+    init_year, init_month, duration, timestep = simulation_timesteps(cur)
+
+    for num in agentid:
+        power_data = cur.execute('SELECT time, value '
+                                 'FROM timeseriespower '
+                                 'WHERE agentid = ' + str(num)).fetchall()
+        power_timeseries = timeseries(power_data, duration, False)
+        power_dict['Reactor_' + str(num)] = power_timeseries
+    return power_dict
+
+
+def total_isotope_used(cur, facility):
+    """Returns dictionary of total masses of isotopes mined
+
+    Parameters
+    ----------
+     cur :  mlite cursor
+        sqlite cursor
+    facility : str
+        str of mine facility
+
+    Returns
+    -------
+    total_isotopes_mined : dict
+        dictionary of isotopes mined and the total mass mined
+    """
+    flux = 'out'
+    isotope_masses_used = cumulative_mass_timeseries(cur, facility, flux)
+    total_isotope = [item[1][0] for item in isotope_masses_used.items()]
+    nuclides = [item[0] for item in isotope_masses_used.items()]
+    total_mass_used = {}
+    for i in range(len(total_isotope)):
+        nuclide = nuclides[i]
+        mass = total_isotope[i]
+        total_mass_used[nuclide] = mass
+    return total_mass_used
+
+
+def reactor_location(csv_file):
+    csvfile = open(csv_file, 'r')
+    reader = csv.reader(csvfile)
+    headers = next(reader)
+    data_items = {}
+    for header in headers:
+        data_items[header] = []
+    for row in reader:
+        for h, v in zip(headers, row):
+            data_items[h].append(v)
+    reactor_loc = dict((key, value) for key, value in data_items.items() if key.startswith(
+        'Latitude') or key.startswith('Longitude') or key.startswith('Reactor Unit'))
+    reactor_locations = {}
+    for i in range(len(reactor_loc['Reactor Unit'])):
+        reactor_locations[list(reactor_loc['Reactor Unit'])[i]] = list(
+            reactor_loc['Latitude'])[i], list(reactor_loc['Longitude'])[i]
+    return reactor_locations
+
+
+def reactor_map(reactor_location):
+    """Returns a map plot of the reactors
+    Parameters
+    ----------
+    reactor_location :  dict
+        dictionary of reactor locations (Latitude,Longitude) 
+
+    Returns
+    -------
+    """
+    m = Basemap(projection='mill', llcrnrlat=20, urcrnrlat=50,
+                llcrnrlon=-130, urcrnrlon=-60, resolution='l')
+    m.drawcoastlines()
+    m.drawcountries()
+    m.drawstates()
+    m.fillcontinents(color='#04BAE3', lake_color='#FFFFFF')
+    m.drawmapboundary(fill_color='#FFFFFF')
+    color_wheel = ['ro', 'bo', 'go', 'yo', 'mo']*50
+    reactor_location_exists = {k: v for k,
+                               v in reactor_location.items() if v[0] is not ''}
+    reactor_location_lat_in = {
+        k: v for k, v in reactor_location_exists.items() if 20 <= int(float(v[0])) <= 50}
+    reactor_location_lon_in = {k: v for k, v in reactor_location_lat_in.items(
+    ) if -160 <= int(float(v[1])) <= -60}
+    print(reactor_location_lon_in)
+    reactor_items = list(reactor_location_lon_in.items())
+    for i in range(len(reactor_location_lon_in.keys())):
+        lat = float([item[1][0] for item in reactor_items][i])
+        lon = float([item[1][1] for item in reactor_items][i])
+        x, y = m(lon, lat)
+        m.plot(x, y, color_wheel[i], label=str(
+            list(reactor_location_lon_in.keys())[i]))
+
+        plt.legend()
+    plt.title('waste mass map')
+    plt.show()
+
+
+def total_isotope_traded(cur, facility, flux, nucid):
+    """
+    Returns dictionary of mass timeseries of each isotope at a facility.
+    Parameters
+    ----------
+    cur : sqlite cursor
+        sqlite cursor
+    facility : str
+        name of facility
+    flux : str
+        direction of flux
+    isotope : nucid
+        nuc id of isotope in interest
+    Returns
+    -------
+    cum_mass : int
+        cumulative mass of isotope of interest
+    """
+    isotope = nucname.name(nucid)
+    cum_mass = cumulative_mass_timeseries(cur, facility, flux)[0][isotope][-1]
+    return cum_mass
+
+def reactor_loadings(cur):
+    """Returns reactor event list
+
+    Parameters
+    ----------
+    cur: sqlite cursor
+        sqlite cursor
+
+    Returns
+    -------
+    reactor_loads : list
+        list of reactor events
+    """
+
+    reactor_events =  cur.execute('SELECT agentid, time, event, value FROM reactorevents ').fetchall()
+    reactor_loads = np.array(reactor_events)
+    return reactor_loads
+    
+def plot_reactor_events(cur):
+    """Returns plot of reactor events
+
+    Parameters
+    ----------
+    cur: sqlite cursor
+        sqlite cursor
+
+    Returns
+    -------
+    """
+
+    reactor_attr = []
+    reactor_time = []
+    events = reactor_loadings(cur)
+    for i in events:
+        if i[2] == 'LOAD':
+            reactor_attr.append(int(i[3][0]))
+            reactor_time.append(int(i[1]))
+        if i[2] == 'DISCHARGE':
+            reactor_attr.append(-1*int((i[3][0])))
+            reactor_time.append(int(i[1]))
+    plt.plot(reactor_time,reactor_attr,'k.')
+    plt.title('Reactor load schedule')
+    plt.xlabel('Time [months]')
+    plt.ylabel('Core assemblies loaded')
+    
