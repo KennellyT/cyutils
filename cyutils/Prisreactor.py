@@ -92,6 +92,18 @@ def html_cur(url):
 
 
 def reactor_info(url):
+    """Returns Prisreactor() object with information on the reactor
+    
+    Parameters
+    ----------
+     url :  str
+        PRIS reactor url  
+
+    Returns
+    -------
+    reactor : PRIS object
+        contains basic information from PRIS url 
+    """
     reactor = Pris_reactor()
     html = html_cur(url)
     reactor_name_find = html.findAll('h1')
@@ -124,6 +136,19 @@ def reactor_info(url):
 
 
 def reactor_data(url):
+    """Returns Prisreactor() object with information on the reactor
+    
+    Parameters
+    ----------
+     url :  str
+        PRIS reactor url  
+
+    Returns
+    -------
+    reactor : PRIS object
+        contains yearly information from PRIS url 
+    """
+
     reactor = Pris_reactor()
     reactor_info = pris_raw_data(url)
     lifetime = ['ElectricitySupplied', 'EnergyAvailabilityFactor',
@@ -159,12 +184,27 @@ def reactor_data(url):
     reactor.op_factor = [(float(x) if x else 0) for x in op_factor]
     reactor.energy_aval_factor_annual = [
         (float(x) if x else 0) for x in energy_aval_factor_annual]
-    reactor.load_factor_factor_annual = [
-        float(i) for i in load_factor_factor_annual]
+    reactor.load_factor_annual = [(float(x) if x else 0) for x in load_factor_factor_annual]
     return reactor
 
 
-def write_pris_csv(url):
+def write_pris_csv(url,reactor_outputfile_name,reactor_yearly_outputfile_name):
+    """Writes csv files with basic and yearly information from PRIS url
+    
+    Parameters
+    ----------
+     url :  str
+        PRIS reactor url  
+    reactor_outputfile_name : str
+        output filename of csv file containing basic information     
+    reactor_yearly_outputfile_name : str
+        output filename of csv file containing yearly information  
+    Returns
+    -------
+    reactor : PRIS object
+        contains basic information from PRIS url 
+    """
+
     reactor_info = pris_raw_data(url)
     owner_type_info = ['ReactorType', 'Model', 'Owner', 'Operator',
                        'CommercialOperationDate', 'PermanentShutdownDate']
@@ -233,7 +273,18 @@ def write_pris_csv(url):
 
 
 def pris_reactor_operating_factor_plot(reactor, reactor_name):
+    """Plots operating factor over year of a Prisreactor() object
+    
+    Parameters
+    ----------
+    reactor :  reactor_info(url) object
+        basic reactor information
+    reactor_name :  reactor_data(url) object    
+        yearly reactor information
 
+    Returns
+    ------- 
+    """
     years = reactor.years
     op = reactor.op_factor
     plt.plot(years, op)

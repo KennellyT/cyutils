@@ -2042,6 +2042,7 @@ def plot_swu(cur, facilities=[]):
     swus = [item[1][0] for item in swu_values.items()]
     times = [item[1][1] for item in swu_values.items()][0]
     plt.stackplot(times, swus, labels=facilities)
+    #plt.plot(times,swus[0],linestyle='-')
     plt.legend(loc='upper left')
     plt.xlabel('Time [months]')
     plt.ylabel('SWU')
