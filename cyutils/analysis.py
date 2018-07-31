@@ -2042,7 +2042,6 @@ def plot_swu(cur, facilities=[]):
     swus = [item[1][0] for item in swu_values.items()]
     times = [item[1][1] for item in swu_values.items()][0]
     plt.stackplot(times, swus, labels=facilities)
-    #plt.plot(times,swus[0],linestyle='-')
     plt.legend(loc='upper left')
     plt.xlabel('Time [months]')
     plt.ylabel('SWU')
@@ -2288,7 +2287,7 @@ def total_isotope_traded(cur, facility, flux, nucid):
     cum_mass = cumulative_mass_timeseries(cur, facility, flux)[isotope][0][-1]
     return cum_mass
 
-def reactor_loadings(cur):
+def reactor_core(cur,reactors=[]):
     """Returns reactor event list
 
     Parameters
@@ -2301,13 +2300,43 @@ def reactor_loadings(cur):
     reactor_loads : list
         list of reactor events
     """
+    reactor_events = {}
+    reactor_cores = {}
+    agentid = agent_ids(cur, 'Reactor')
 
-    reactor_events =  cur.execute('SELECT agentid, time, event, value FROM reactorevents ').fetchall()
-    reactor_loads = np.array(reactor_events)
-    return reactor_loads
-    
-def plot_reactor_events(cur):
-    """Returns plot of reactor events
+    if len(reactors) != 0:
+        agentid = reactors
+    init_year, init_month, duration, timestep = simulation_timesteps(cur)
+    for num in agentid:
+        reactor_data = cur.execute('SELECT time, event, value '
+                               'FROM reactorevents '
+                               'WHERE agentid = ' + str(num)).fetchall()
+        
+        reactor_dataseries = np.array(reactor_data)
+        reactor_events['Reactor_' + str(num)] = reactor_dataseries
+        times = [float(item[0]) for item in reactor_dataseries]
+        assemblies = [item[2] for item in reactor_dataseries]
+        action = [item[1] for item in reactor_dataseries]
+        for n,i in enumerate(action):
+            if i == 'LOAD':
+                action[n] = 1
+            elif i == 'DISCHARGE':
+                action[n] = -1
+            else:
+                action[n] = 0
+        values = [(float(x[0]) if x else 0) for x in assemblies]
+        core_moves = np.array(values)*np.array(action)
+        core_series = list(core_moves)
+        for j in np.arange(0, int(duration)):
+            if j not in times:
+                times.insert(j, j)
+                core_series.insert(j, 0)
+        reactor_cores['Reactor_' + str(num)] = [times,core_series]
+
+    return reactor_cores
+
+def reactor_core_loads(cur,reactors=[]):
+    """Returns reactor event list
 
     Parameters
     ----------
@@ -2316,20 +2345,117 @@ def plot_reactor_events(cur):
 
     Returns
     -------
+    reactor_loads : list
+        list of reactor events
     """
+    reactor_events = {}
+    reactor_cores = {}
+    agentid = agent_ids(cur, 'Reactor')
 
-    reactor_attr = []
-    reactor_time = []
-    events = reactor_loadings(cur)
-    for i in events:
-        if i[2] == 'LOAD':
-            reactor_attr.append(int(i[3][0]))
-            reactor_time.append(int(i[1]))
-        if i[2] == 'DISCHARGE':
-            reactor_attr.append(-1*int((i[3][0])))
-            reactor_time.append(int(i[1]))
-    plt.plot(reactor_time,reactor_attr,'k.')
-    plt.title('Reactor load schedule')
+    if len(reactors) != 0:
+        agentid = reactors
+    init_year, init_month, duration, timestep = simulation_timesteps(cur)
+    for num in agentid:
+        reactor_data = cur.execute('SELECT time, event, value '
+                               'FROM reactorevents '
+                               'WHERE agentid = ' + str(num)).fetchall()
+        
+        reactor_dataseries = np.array(reactor_data)
+        reactor_events['Reactor_' + str(num)] = reactor_dataseries
+        times = [float(item[0]) for item in reactor_dataseries]
+        assemblies = [item[2] for item in reactor_dataseries]
+        action = [item[1] for item in reactor_dataseries]
+        for n,i in enumerate(action):
+            if i == 'LOAD':
+                action[n] = 1
+            else:
+                action[n] = 0
+        values = [(float(x[0]) if x else 0) for x in assemblies]
+        core_moves = np.array(values)*np.array(action)
+        core_loads = Counter()
+        for time, loads in list(zip(times,core_moves)):
+            core_loads.update({time: loads})
+        times = list(core_loads.keys())
+        core_series = list(core_loads.values())
+        for j in np.arange(0, int(duration)):
+            if j not in times:
+                times.insert(j, j)
+                core_series.insert(j, 0)
+        reactor_cores['Reactor_' + str(num)] = [times,core_series]
+
+    return reactor_cores
+
+def reactor_core_discharges(cur,reactors=[]):
+    """Returns reactor event list
+
+    Parameters
+    ----------
+    cur: sqlite cursor
+        sqlite cursor
+
+    Returns
+    -------
+    reactor_loads : list
+        list of reactor events
+    """
+    reactor_events = {}
+    reactor_cores = {}
+    agentid = agent_ids(cur, 'Reactor')
+
+    if len(reactors) != 0:
+        agentid = reactors
+    init_year, init_month, duration, timestep = simulation_timesteps(cur)
+    for num in agentid:
+        reactor_data = cur.execute('SELECT time, event, value '
+                               'FROM reactorevents '
+                               'WHERE agentid = ' + str(num)).fetchall()
+        
+        reactor_dataseries = np.array(reactor_data)
+        reactor_events['Reactor_' + str(num)] = reactor_dataseries
+        times = [float(item[0]) for item in reactor_dataseries]
+        assemblies = [item[2] for item in reactor_dataseries]
+        action = [item[1] for item in reactor_dataseries]
+        for n,i in enumerate(action):
+            if i == 'DISCHARGE':
+                action[n] = 1
+            else:
+                action[n] = 0
+        values = [(float(x[0]) if x else 0) for x in assemblies]
+        core_moves = np.array(values)*np.array(action)
+        core_loads = Counter()
+        for time, loads in list(zip(times,core_moves)):
+            core_loads.update({time: loads})
+        times = list(core_loads.keys())
+        core_series = list(core_loads.values())
+        for j in np.arange(0, int(duration)):
+            if j not in times:
+                times.insert(j, j)
+                core_series.insert(j, 0)
+        reactor_cores['Reactor_' + str(num)] = [times,core_series]
+
+    return reactor_cores
+
+def plot_reactor_events(cur,reactors=[]):
+    """Returns plot of reactor batches loaded
+
+    Parameters
+    ----------
+    cur: sqlite cursor
+        sqlite cursor
+    reactprs : list of ints
+        agent ids of reactors of interest
+    Returns
+    -------
+    """
+    reactor_cores = reactor_core_loads(cur,reactors)
+    facilities = [item[0] for item in reactor_cores.items()]
+    for i in range(len(facilities)):
+        cores = [item[1][1] for item in reactor_cores.items()][i]
+        times = [item[1][0] for item in reactor_cores.items()][i]
+        reactor = [item[0] for item in reactor_cores.items()][i]
+        plt.plot(times, cores,label=reactor)
+    plt.legend(loc='upper right')
     plt.xlabel('Time [months]')
-    plt.ylabel('Core assemblies loaded')
-    
+    plt.ylabel('Batches loaded')
+    plt.title('Reactor core loading schedule by Reactor')
+    plt.show()
