@@ -1613,7 +1613,7 @@ def plot_out_flux_cumulative(
     plt.show()
 
 
-def plot_in_flux_basic(
+def plot_in_flux(
         cur,
         facility,
         title):
@@ -1658,7 +1658,7 @@ def plot_in_flux_basic(
     plt.show()
 
 
-def plot_out_flux_basic(
+def plot_out_flux(
         cur,
         facility,
         title):
@@ -2457,5 +2457,7 @@ def plot_reactor_events(cur,reactors=[]):
     plt.legend(loc='upper right')
     plt.xlabel('Time [months]')
     plt.ylabel('Batches loaded')
-    plt.title('Reactor core loading schedule by Reactor')
+    plt.title('Reactor core loading schedule')
     plt.show()
+    
+    
