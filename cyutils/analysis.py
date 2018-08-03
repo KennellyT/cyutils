@@ -861,7 +861,7 @@ def u_util_calc(cur):
 
 
 def plot_uranium_utilization(cur):
-    """Plots uranium utilization factor of fuel cycle
+    """Plots uranium utilization timeseries by plotting the u_util_timeseries over time
 
     Parameters
     ----------
@@ -2459,5 +2459,65 @@ def plot_reactor_events(cur,reactors=[]):
     plt.ylabel('Batches loaded')
     plt.title('Reactor core loading schedule')
     plt.show()
-    
-    
+ 
+def plot_commodity(cur,archetype,facility_commodity,is_outflux,is_cum=True):
+
+    init_year, init_month, duration, timestep = simulation_timesteps(cur)
+
+    agentids = agent_ids(cur, archetype)
+    commodity_no_cum = facility_commodity_flux(cur, agentids, facility_commodity,
+                                        False, False)
+    commodity = facility_commodity_flux(cur, agentids, facility_commodity,
+                                        False, True) 
+    commodity_month = {}
+    commodity_month['monthly_discharge'] = commodity_no_cum[facility_commodity[0]][:duration]
+    commodity_total = {}
+    commodity_total['cum_mass'] = commodity[facility_commodity[0]][:duration]
+    double_axis_bar_line_plot(commodity_month,commodity_total, timestep[:duration], 'Years',  'Monthly Discharge Mass [MTHM]','Cumulative Mass [MTHM]',
+                    str(facility_commodity[0]).capitalize() + ' Discharge vs Time', str(facility_commodity[0]) + 'discharge', init_year)
+
+def plot_commodities(cur,archetype,facility_commodity,title,filename,is_outflux=True,is_cum=False):
+
+    init_year, init_month, duration, timestep = simulation_timesteps(cur)
+
+    agentids = agent_ids(cur, archetype)
+    commodities = facility_commodity_flux(cur, agentids, facility_commodity,
+                                        is_outflux, is_cum)
+    stacked_bar_chart(commodities, timestep, 'Years', 'Mass [MTHM]',
+                     title, filename, init_year)
+
+
+def plot_commodities_isotropics(cur,archetype,facility_commodity,title,filename,is_outflux=True,is_cum=True):
+
+    init_year, init_month, duration, timestep = simulation_timesteps(cur)
+
+    agentids = agent_ids(cur, archetype)
+    commodities = facility_commodity_flux_isotopics(cur, agentids, facility_commodity,
+                                        is_outflux, is_cum)
+    stacked_bar_chart(commodities, timestep, 'Years', 'Mass [MTHM]',
+                     title, filename, init_year)
+
+def plot_fuel(cur,facility_commodity,is_outflux,is_cum=True):
+    init_year, init_month, duration, timestep = simulation_timesteps(cur)
+    fuels = fuel_usage_timeseries(cur,facility_commodity, True)
+    fuels[facility_commodity[0]] = fuels[facility_commodity[0]][:duration]
+    fuels[facility_commodity[1]] = fuels[facility_commodity[1]][:duration]
+    stacked_bar_chart(fuels, timestep[:duration],
+                      'Years', 'Mass[MTHM]',
+                      'Total Fuel Mass vs Time',
+                      'total_fuel',
+                      init_year)
+
+
+def total_commodity_timestep(cur,archetype,facility_commodity,timestep=900,is_outflux,is_cum=True):
+
+    init_year, init_month, duration, timestep = simulation_timesteps(cur)
+
+    agentids = agent_ids(cur, archetype)
+
+
+    commodity = facility_commodity_flux(cur, agentids, facility_commodity,
+                                        False, True) 
+    commodity_total = {}
+    commodity_total['cum_mass'] = commodity[facility_commodity[0]][:timestep]
+    return commodity_total
