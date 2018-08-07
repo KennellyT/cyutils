@@ -8,7 +8,7 @@ from matplotlib import cm
 from pyne import nucname
 import pandas as pd
 from collections import Counter
-from mpl_toolkits.basemap import Basemap
+#from mpl_toolkits.basemap import Basemap
 import matplotlib.pyplot as plt
 
 if len(sys.argv) < 2:
@@ -2226,43 +2226,45 @@ def reactor_location(csv_file):
             reactor_loc['Latitude'])[i], list(reactor_loc['Longitude'])[i]
     return reactor_locations
 
-
-def reactor_map(reactor_location):
-    """Returns a map plot of the reactors
-    Parameters
-    ----------
-    reactor_location :  dict
-        dictionary of reactor locations (Latitude,Longitude) 
-
-    Returns
-    -------
-    """
-    m = Basemap(projection='mill', llcrnrlat=20, urcrnrlat=50,
-                llcrnrlon=-130, urcrnrlon=-60, resolution='l')
-    m.drawcoastlines()
-    m.drawcountries()
-    m.drawstates()
-    m.fillcontinents(color='#04BAE3', lake_color='#FFFFFF')
-    m.drawmapboundary(fill_color='#FFFFFF')
-    color_wheel = ['ro', 'bo', 'go', 'yo', 'mo']*50
-    reactor_location_exists = {k: v for k,
-                               v in reactor_location.items() if v[0] is not ''}
-    reactor_location_lat_in = {
-        k: v for k, v in reactor_location_exists.items() if 20 <= int(float(v[0])) <= 50}
-    reactor_location_lon_in = {k: v for k, v in reactor_location_lat_in.items(
-    ) if -160 <= int(float(v[1])) <= -60}
-    print(reactor_location_lon_in)
-    reactor_items = list(reactor_location_lon_in.items())
-    for i in range(len(reactor_location_lon_in.keys())):
-        lat = float([item[1][0] for item in reactor_items][i])
-        lon = float([item[1][1] for item in reactor_items][i])
-        x, y = m(lon, lat)
-        m.plot(x, y, color_wheel[i], label=str(
-            list(reactor_location_lon_in.keys())[i]))
-
-        plt.legend()
-    plt.title('waste mass map')
-    plt.show()
+# =============================================================================
+# 
+# def reactor_map(reactor_location):
+#     """Returns a map plot of the reactors
+#     Parameters
+#     ----------
+#     reactor_location :  dict
+#         dictionary of reactor locations (Latitude,Longitude) 
+# 
+#     Returns
+#     -------
+#     """
+#     m = Basemap(projection='mill', llcrnrlat=20, urcrnrlat=50,
+#                 llcrnrlon=-130, urcrnrlon=-60, resolution='l')
+#     m.drawcoastlines()
+#     m.drawcountries()
+#     m.drawstates()
+#     m.fillcontinents(color='#04BAE3', lake_color='#FFFFFF')
+#     m.drawmapboundary(fill_color='#FFFFFF')
+#     color_wheel = ['ro', 'bo', 'go', 'yo', 'mo']*50
+#     reactor_location_exists = {k: v for k,
+#                                v in reactor_location.items() if v[0] is not ''}
+#     reactor_location_lat_in = {
+#         k: v for k, v in reactor_location_exists.items() if 20 <= int(float(v[0])) <= 50}
+#     reactor_location_lon_in = {k: v for k, v in reactor_location_lat_in.items(
+#     ) if -160 <= int(float(v[1])) <= -60}
+#     print(reactor_location_lon_in)
+#     reactor_items = list(reactor_location_lon_in.items())
+#     for i in range(len(reactor_location_lon_in.keys())):
+#         lat = float([item[1][0] for item in reactor_items][i])
+#         lon = float([item[1][1] for item in reactor_items][i])
+#         x, y = m(lon, lat)
+#         m.plot(x, y, color_wheel[i], label=str(
+#             list(reactor_location_lon_in.keys())[i]))
+# 
+#         plt.legend()
+#     plt.title('waste mass map')
+#     plt.show()
+# =============================================================================
 
 
 def total_isotope_traded(cur, facility, flux, nucid):
@@ -2509,7 +2511,7 @@ def plot_fuel(cur,facility_commodity,is_outflux,is_cum=True):
                       init_year)
 
 
-def total_commodity_timestep(cur,archetype,facility_commodity,timestep=900,is_outflux,is_cum=True):
+def total_commodity_timestep(cur,archetype,facility_commodity,timestep=900,is_outflux=False,is_cum=True):
 
     init_year, init_month, duration, timestep = simulation_timesteps(cur)
 
