@@ -5,7 +5,7 @@ jobs:
     build:
       docker:
         - image: cyclus/cycamore
-      working_directory: ~/d3ploy
+      working_directory: ~/cyutils
       steps:
         - run: apt-get -qq update; apt-get -y install git openssh-client
         - checkout
@@ -24,7 +24,7 @@ jobs:
     unit_test:
         docker:
             - image: cyclus/cycamore
-        working_directory: ~/d3ploy
+        working_directory: ~/cyutils
         steps:
           - checkout
           - run:
@@ -32,9 +32,9 @@ jobs:
                 command: |
                     pip install -U pytest
                     python setup.py install
-                    pytest ./tests/test_analysis.py
-                    pytest ./tests/test_database.py
-                    pytest ./tests/test_write.py
+                    pytest ~/cyutils/tests/test_analysis.py
+                    pytest ~/cyutils/tests/test_database.py
+                    pytest ~/cyutils/tests/test_write.py
     
 
 workflows:
