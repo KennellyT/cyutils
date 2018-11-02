@@ -1,0 +1,45 @@
+version: 2
+
+jobs:
+
+    build:
+      docker:
+        - image: cyclus/cycamore
+      working_directory: ~/cyutils
+      steps:
+        - run: apt-get -qq update; apt-get -y install git openssh-client
+        - checkout
+        - run:
+            name: build cyutils
+            command: python setup.py install
+        - run:
+            name: save SHA to a file
+            command: echo $CIRCLE_SHA1 > .circle-sha
+        - save_cache:
+            key: v1-repo-{{ checksum ".circle-sha" }}
+            paths:
+              - /root
+
+
+    unit_test:
+        docker:
+            - image: cyclus/cycamore
+        working_directory: ~/cyutils
+        steps:
+          - checkout
+          - run:
+                name: solver unit tests
+                command: |
+                    pip install -U pytest
+                    python setup.py install
+                    pytest ~/cyutils/tests/test_analysis.py
+                    pytest ~/cyutils/tests/test_database.py
+                    pytest ~/cyutils/tests/test_write.py
+    
+
+workflows:
+        version: 2
+        build_and_test:
+            jobs:
+                - build
+                - unit_test
